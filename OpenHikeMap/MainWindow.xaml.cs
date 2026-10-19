@@ -135,13 +135,18 @@ public partial class MainWindow : Window
         _viewModel.L.SetLanguage(_viewModel.Settings.LanguageCode);
         _viewModel.UpdateIconOptions(_viewModel.Settings.LanguageCode);
         RebuildPlaceTree();
-        Title = _viewModel.L["WindowTitle"];
+        Title = $"{_viewModel.L["WindowTitle"]} v0.5";
     }
     private async Task InitializeMapAsync()
     {
-        await MapWebView.EnsureCoreWebView2Async();
+        const string userAgent = "OpenHikeMap/0.5 (+https://github.com/Rallo00/)";
+        var environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenHikeMap", "WebView2"), new CoreWebView2EnvironmentOptions($"--user-agent=\"{userAgent}\""));
+        await MapWebView.EnsureCoreWebView2Async(environment);
+        MapWebView.CoreWebView2.Settings.UserAgent = userAgent;
         MapWebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
         MapWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
+        MapWebView.CoreWebView2.AddWebResourceRequestedFilter("https://*.tile.openstreetmap.org/*", CoreWebView2WebResourceContext.Image);
+        MapWebView.CoreWebView2.WebResourceRequested += (_, e) => e.Request.Headers.SetHeader("User-Agent", userAgent);
         MapWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
         MapWebView.NavigateToString(BuildMapHtml());
     }
@@ -1915,14 +1920,11 @@ public partial class MainWindow : Window
     let rulerLabelMarker = null;
     const contextMenu = document.getElementById('contextMenu');
     const baseLayers = {
-      OpenStreetMap: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }),
+      OpenStreetMap: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>' }),
       OpenTopoMap: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 }),
       CyclOSM: L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', { maxZoom: 20 }),
       Humanitarian: L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom: 19 }),
-      'OSM DE': L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', { maxZoom: 18 }),
-      'Carto Voyager': L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20, subdomains: 'abcd' }),
-      'Carto Light': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 20, subdomains: 'abcd' }),
-      'Carto Dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20, subdomains: 'abcd' })
+      'OSM DE': L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>' })
     };
     const overlays = {
       satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),

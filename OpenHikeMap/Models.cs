@@ -687,7 +687,7 @@ public sealed class MainWindowViewModel : BindableBase
     public ObservableCollection<PinColorOption> AvailablePinColors { get; } = [];
     public IReadOnlyList<string> AvailableThemes { get; } = ["System", "Light", "Dark"];
     public IReadOnlyList<string> AvailableLanguages { get; } = ["it-IT", "en-US", "fr-FR", "es-ES", "de-DE", "nl-NL", "nb-NO", "da-DK", "sv-SE", "fi-FI"];
-    public IReadOnlyList<string> AvailableMapStyles { get; } = ["OpenStreetMap", "OpenTopoMap", "CyclOSM", "Humanitarian", "OSM DE", "Carto Voyager", "Carto Light", "Carto Dark"];
+    public IReadOnlyList<string> AvailableMapStyles { get; } = ["OpenStreetMap", "OpenTopoMap", "CyclOSM", "Humanitarian", "OSM DE"];
     public IReadOnlyList<string> AvailableUnitPresets { get; } = ["Metric", "Imperial", "Custom"];
     public IReadOnlyList<string> AvailableDistanceUnits { get; } = ["km", "mi", "m", "ft"];
     public IReadOnlyList<string> AvailableAltitudeUnits { get; } = ["m", "ft"];
