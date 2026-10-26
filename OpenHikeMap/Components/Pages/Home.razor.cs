@@ -516,7 +516,7 @@ public partial class Home
         WeatherRequest?.Cancel(); AlertsRequest?.Cancel();
         Lifetime.Cancel(); Lifetime.Dispose();
         try { await StartupContextRefresh.WaitAsync(TimeSpan.FromSeconds(2)); } catch (Exception ex) when (ex is OperationCanceledException or TimeoutException) { }
-        if (Module is not null)
+        if (Module is not null && !HostLifetime.ApplicationStopping.IsCancellationRequested)
         {
             try { await Module.InvokeVoidAsync("dispose"); await Module.DisposeAsync(); } catch (JSDisconnectedException) { }
         }

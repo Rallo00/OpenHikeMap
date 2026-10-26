@@ -21,6 +21,7 @@ internal sealed class DesktopApplication : Application
         var window = new DesktopWindow(); MainWindow = window; window.Show();
         try { await window.StartAsync(); }
         catch (OperationCanceledException) when (window.IsStopping) { }
+        catch (Exception ex) when (window.IsStopping) { Services.StartupDiagnostics.Write("Startup interrupted by application shutdown.", ex); }
         catch (Exception ex)
         {
             Directory.CreateDirectory(DataDirectory);

@@ -18,17 +18,23 @@ internal sealed class DesktopWindow : Window
     private const string Address = "http://127.0.0.1:5186/";
     private readonly CancellationTokenSource _lifetime = new();
     private readonly WebView2 _browser = new();
-    private readonly TextBlock _loading = new() { Text = "Avvio di OpenHikeMap...", FontSize = 18, Foreground = new SolidColorBrush(Color.FromRgb(49, 92, 67)), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly Border _loading = new();
     private WebApplication? _server;
     private Task? _startup;
+    private Task? _serverStartup;
     private bool _closed;
     internal bool IsStopping { get; private set; }
 
     internal DesktopWindow()
     {
         Title = ApplicationInfo.WindowTitle; Width = 1400; Height = 900; MinWidth = 850; MinHeight = 600; WindowState = WindowState.Maximized;
-        Icon = BitmapFrame.Create(new Uri("pack://application:,,,/Assets/OpenHikeMap.ico"));
+        Icon = BitmapDecoder.Create(new Uri("pack://application:,,,/Assets/OpenHikeMap.ico"), BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad).Frames.MaxBy(frame => frame.PixelWidth)!;
         Background = new SolidColorBrush(Color.FromRgb(248, 249, 245));
+        var brand = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        brand.Children.Add(new Image { Source = Icon, Width = 96, Height = 96, Margin = new Thickness(0, 0, 0, 18) });
+        brand.Children.Add(new TextBlock { Text = "OpenHikeMap", FontSize = 30, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(49, 92, 67)), HorizontalAlignment = HorizontalAlignment.Center });
+        brand.Children.Add(new TextBlock { Text = $"v{ApplicationInfo.Version}", FontSize = 15, Foreground = new SolidColorBrush(Color.FromRgb(89, 99, 86)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 5, 0, 0) });
+        _loading.Background = Background; _loading.Child = brand;
         var layout = new Grid(); layout.Children.Add(_browser); layout.Children.Add(_loading); Content = layout;
     }
 
@@ -37,17 +43,17 @@ internal sealed class DesktopWindow : Window
     {
         var token = _lifetime.Token;
         var watch = Stopwatch.StartNew();
-        var serverStartup = Task.Run(async () =>
+        _serverStartup = Task.Run(async () =>
         {
             var assets = WebAssets.Prepare(); token.ThrowIfCancellationRequested();
             _server = WebApplicationHost.Create(assets);
             await _server.StartAsync(token);
         }, token);
         var environmentStartup = CoreWebView2Environment.CreateAsync(null, Path.Combine(DesktopApplication.DataDirectory, "Profile"));
-        await Task.WhenAll(serverStartup, environmentStartup);
+        await Task.WhenAll(_serverStartup, environmentStartup).WaitAsync(token);
         var environment = await environmentStartup;
         token.ThrowIfCancellationRequested();
-        await _browser.EnsureCoreWebView2Async(environment); token.ThrowIfCancellationRequested();
+        await _browser.EnsureCoreWebView2Async(environment).WaitAsync(token); token.ThrowIfCancellationRequested();
         var core = _browser.CoreWebView2;
         core.ProcessFailed += (_, e) => StartupDiagnostics.Write($"WebView2 process failure: {e.ProcessFailedKind}.");
         core.Settings.IsStatusBarEnabled = false; core.Settings.AreDefaultContextMenusEnabled = false; core.Settings.AreDevToolsEnabled = false;
@@ -75,18 +81,34 @@ internal sealed class DesktopWindow : Window
     }
     protected override async void OnClosing(CancelEventArgs e)
     {
-        if (_closed) { base.OnClosing(e); return; }
+        base.OnClosing(e);
+        if (_closed || e.Cancel) return;
         e.Cancel = true; if (IsStopping) return;
+        var watch = Stopwatch.StartNew();
         IsStopping = true; IsEnabled = false; _lifetime.Cancel();
-        try { if (_startup is not null) await _startup; } catch { }
-        _browser.Dispose();
-        if (_server is not null)
+        try
         {
-            try { using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5)); await _server.StopAsync(timeout.Token); }
-            catch (OperationCanceledException) { StartupDiagnostics.Write("Local host shutdown timed out."); }
-            finally { await _server.DisposeAsync(); }
+            // Only wait for the local host; WebView initialization may still be pending when the user closes.
+            try { if (_serverStartup is not null) await _serverStartup; } catch (OperationCanceledException) { }
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            // Host lifetime callbacks must run off the WPF dispatcher to avoid a synchronous shutdown stall.
+            var stopping = _server is { } server ? Task.Run(() => server.StopAsync(timeout.Token)) : Task.CompletedTask;
+            StartupDiagnostics.Write($"Desktop shutdown: local host stop requested at {watch.ElapsedMilliseconds} ms.");
+            _browser.Dispose();
+            StartupDiagnostics.Write($"Desktop shutdown: browser disposed at {watch.ElapsedMilliseconds} ms.");
+            await stopping;
+            StartupDiagnostics.Write($"Desktop shutdown: local host stopped at {watch.ElapsedMilliseconds} ms.");
         }
-        _lifetime.Dispose(); _closed = true;
-        _ = Dispatcher.BeginInvoke(new Action(Close));
+        catch (OperationCanceledException) { StartupDiagnostics.Write("Local host graceful shutdown deadline reached."); }
+        catch (Exception ex) { StartupDiagnostics.Write("Local host shutdown failed.", ex); }
+        finally
+        {
+            _browser.Dispose();
+            try { if (_server is { } server) await Task.Run(async () => await server.DisposeAsync()); }
+            catch (Exception ex) { StartupDiagnostics.Write("Local host disposal failed.", ex); }
+            _lifetime.Dispose(); _closed = true;
+            StartupDiagnostics.Write($"Desktop shutdown completed in {watch.ElapsedMilliseconds} ms.");
+            _ = Dispatcher.BeginInvoke(new Action(Close));
+        }
     }
 }

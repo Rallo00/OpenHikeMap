@@ -15,6 +15,7 @@ public static class WebApplicationHost
         });
         builder.Configuration.AddUserSecrets(typeof(WebApplicationHost).Assembly, optional: true);
         builder.Logging.ClearProviders();
+        builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = TimeSpan.FromSeconds(1));
         builder.Configuration["AllowedHosts"] = "127.0.0.1;localhost";
         builder.WebHost.ConfigureKestrel(options => options.Listen(System.Net.IPAddress.Loopback, port));
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
@@ -45,12 +46,13 @@ public static class WebApplicationHost
             if (z is < 0 or > 19 || x < 0 || y < 0 || x >= 1 << z || y >= 1 << z) return Results.BadRequest();
             try
             {
-                var tile = await tiles.GetAsync(z, x, y);
+                var tile = await tiles.GetAsync(z, x, y, context.RequestAborted);
                 var maxAge = Math.Max(0, (int)(tile.Expires - DateTimeOffset.UtcNow).TotalSeconds);
                 context.Response.Headers.CacheControl = tile.Cacheable ? $"public,max-age={maxAge}" : "no-store";
                 return Results.File(tile.Bytes, "image/png", lastModified: tile.LastModified, entityTag: tile.ETag is { } tag ? Microsoft.Net.Http.Headers.EntityTagHeaderValue.Parse(tag) : null);
             }
-            catch (TaskCanceledException) { context.Response.Headers.CacheControl = "no-store"; return Results.StatusCode(StatusCodes.Status504GatewayTimeout); }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested || app.Lifetime.ApplicationStopping.IsCancellationRequested) { return Results.Empty; }
+            catch (OperationCanceledException) { context.Response.Headers.CacheControl = "no-store"; return Results.StatusCode(StatusCodes.Status504GatewayTimeout); }
             catch (HttpRequestException ex) { context.Response.Headers.CacheControl = "no-store"; return Results.StatusCode(ex.StatusCode is { } status ? (int)status : StatusCodes.Status502BadGateway); }
         });
         app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

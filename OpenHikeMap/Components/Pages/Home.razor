@@ -9,6 +9,7 @@
 @inject ILogger<Home> Logger
 @inject CivilProtectionService CivilProtection
 @inject AppSettingsStore SettingsStore
+@inject Microsoft.Extensions.Hosting.IHostApplicationLifetime HostLifetime
 
 <PageTitle>@ApplicationInfo.WindowTitle</PageTitle>
 <div class="app-shell" data-theme="@Data.Settings.ThemeMode.ToLowerInvariant()">

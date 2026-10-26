@@ -1,5 +1,6 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject Microsoft.Extensions.Hosting.IHostApplicationLifetime HostLifetime
 @using OpenHikeMap.Models
 @using OpenHikeMap.Services
 @using System.Globalization
@@ -71,7 +72,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (Module is null) return;
+        if (Module is null || HostLifetime.ApplicationStopping.IsCancellationRequested) return;
         try { await Module.InvokeVoidAsync("dispose", ChartId); await Module.DisposeAsync(); } catch (JSDisconnectedException) { }
     }
 }
