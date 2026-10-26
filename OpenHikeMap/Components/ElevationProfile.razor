@@ -1,0 +1,77 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@using OpenHikeMap.Models
+@using OpenHikeMap.Services
+@using System.Globalization
+
+<section class="elevation-panel panel @(Expanded ? "is-open" : "")" aria-label="@L["BottomPaneHeader"]">
+    <button class="elevation-heading" aria-expanded="@(Expanded ? "true" : "false")" aria-controls="@ChartId" @onclick="Toggle">
+        <span>@L["BottomPaneHeader"]</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6" /></svg>
+    </button>
+    @if (Expanded)
+    {
+        <div class="elevation-content">
+            <div class="elevation-metrics">
+                <div><strong>@DistanceText <small>@DistanceUnit</small></strong><span>@L["ProfileDistanceLabel"]</span></div>
+                <div><strong>@DurationText</strong><span>@L["ProfileTimeLabel"]</span></div>
+                <div><strong>@AltitudeText(Profile.GainMeters + Profile.LossMeters) <small>@(Profile.HasElevation ? $"(↑{AltitudeText(Profile.GainMeters)} − ↓{AltitudeText(Profile.LossMeters)})" : "")</small></strong><span>@L["ProfileElevationLabel"]</span></div>
+                <div><strong>@(Profile.HasElevation ? $"{Math.Round(Profile.AverageSlope, MidpointRounding.AwayFromZero):F0}%" : "—")</strong><span>@L["ProfileSlopeLabel"]</span></div>
+            </div>
+            @if (Profile.HasElevation) { <div id="@ChartId" class="elevation-chart" tabindex="0" role="img" aria-label="@L["ProfileChartDescription"]"></div> }
+            else { <p id="@ChartId" class="elevation-empty">@L[Geometry.Count > 1 ? "ProfileNoElevation" : "ProfileEmpty"]</p> }
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<RoutePathPoint> Geometry { get; set; } = [];
+    [Parameter, EditorRequired] public AppSettings Settings { get; set; } = new();
+    [Parameter] public bool Completed { get; set; }
+    private readonly LocalizationService L = new();
+    private readonly string ChartId = $"elevation-{Guid.NewGuid():N}";
+    private IReadOnlyList<RoutePathPoint>? LastGeometry;
+    private ElevationProfileData Profile = new(0, 0, 0, 0, []);
+    private bool Expanded, Mounted;
+    private IJSObjectReference? Module;
+    private bool ImperialDistance => Settings.UnitPreset == "Imperial" || Settings.DistanceUnit == "mi";
+    private bool ImperialAltitude => Settings.UnitPreset == "Imperial" || Settings.AltitudeUnit == "ft";
+    private string DistanceUnit => ImperialDistance ? "mi" : "km";
+    private double SpeedKph => Math.Max(.1, Settings.TravelSpeed * (Settings.SpeedUnit == "mph" || Settings.UnitPreset == "Imperial" ? 1.609344 : 1));
+    private CultureInfo Culture { get { try { return CultureInfo.GetCultureInfo(Settings.LanguageCode); } catch (CultureNotFoundException) { return CultureInfo.InvariantCulture; } } }
+    private string DistanceText => (Profile.DistanceMeters / (ImperialDistance ? 1609.344 : 1000)).ToString("0.##", Culture);
+    private string AltitudeText(double value) => Profile.HasElevation ? $"{(value * (ImperialAltitude ? 3.280839895 : 1)).ToString("0", Culture)} {(ImperialAltitude ? "ft" : "m")}" : "—";
+    private string DurationText { get { var minutes = (long)Math.Round(Profile.DistanceMeters / 1000 / SpeedKph * 60); return $"{minutes / 60}h {minutes % 60:00}m"; } }
+
+    protected override void OnParametersSet()
+    {
+        L.SetLanguage(Settings.LanguageCode);
+        if (ReferenceEquals(LastGeometry, Geometry)) return;
+        LastGeometry = Geometry;
+        Profile = ElevationProfileCalculator.Calculate(Geometry);
+        Expanded = Geometry.Count > 1 && Completed;
+    }
+
+    private void Toggle() => Expanded = !Expanded;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (Expanded && Profile.HasElevation)
+            {
+                Module ??= await JS.InvokeAsync<IJSObjectReference>("import", $"./js/elevation-profile.js?v={ClientAssetVersion.Value}");
+                await Module.InvokeVoidAsync("render", ChartId, Profile, new { locale = Settings.LanguageCode, distanceUnit = DistanceUnit, altitudeUnit = ImperialAltitude ? "ft" : "m", speedKph = SpeedKph,
+                    distanceLabel = L["ProfileDistanceLabel"], timeLabel = L["ProfileTimeLabel"], altitudeLabel = L["ProfileAltitudeLabel"], slopeLabel = L["ProfileHoverSlope"] });
+                Mounted = true;
+            }
+            else if (Mounted && Module is not null) { await Module.InvokeVoidAsync("dispose", ChartId); Mounted = false; }
+        }
+        catch (JSDisconnectedException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Module is null) return;
+        try { await Module.InvokeVoidAsync("dispose", ChartId); await Module.DisposeAsync(); } catch (JSDisconnectedException) { }
+    }
+}

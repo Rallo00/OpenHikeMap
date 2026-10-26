@@ -1,64 +1,9 @@
 using System.Globalization;
-using System.IO;
 using System.Net.Http;
 using System.Text.Json;
-using System.Windows;
-using System.Windows.Media;
 using System.Xml.Linq;
-namespace OpenHikeMap;
-public sealed class AppStorageService
-{
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-    private readonly SemaphoreSlim _saveLock = new(1, 1);
-    public string DataDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "OpenHikeMap");
-    public string AppDataPath => Path.Combine(DataDirectory, "appdata.json");
-    public string SettingsPath => Path.Combine(DataDirectory, "settings.json");
-    public string PlacesPath => Path.Combine(DataDirectory, "places.json");
-    public AppStorageService()
-    {
-        Directory.CreateDirectory(DataDirectory);
-    }
-    public async Task<AppDataModel> LoadAsync()
-    {
-        if (!File.Exists(AppDataPath))
-        {
-            return new AppDataModel();
-        }
-        await using var stream = File.OpenRead(AppDataPath);
-        return await JsonSerializer.DeserializeAsync<AppDataModel>(stream, JsonOptions) ?? new AppDataModel();
-    }
-    public async Task SaveAsync(AppDataModel model)
-    {
-        await _saveLock.WaitAsync();
-        try
-        {
-            Directory.CreateDirectory(DataDirectory);
-            await SaveFileAsync(AppDataPath, model);
-            await SaveFileAsync(SettingsPath, model.Settings);
-            await SaveFileAsync(PlacesPath, model.Places);
-        }
-        finally
-        {
-            _saveLock.Release();
-        }
-    }
-    public async Task SaveFileAsync<T>(string path, T model)
-    {
-        var tempPath = $"{path}.tmp";
-        await using (var stream = File.Create(tempPath))
-        {
-            await JsonSerializer.SerializeAsync(stream, model, JsonOptions);
-        }
-        File.Move(tempPath, path, true);
-    }
-    public async Task<T?> LoadFileAsync<T>(string path)
-    {
-        await using var stream = File.OpenRead(path);
-        return await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions);
-    }
-}
+using OpenHikeMap.Models;
+namespace OpenHikeMap.Services;
 public sealed class SearchService
 {
     private sealed record PoiSearchDefinition(string OsmSearchTerm, string[] TagFilters);
@@ -76,7 +21,7 @@ public sealed class SearchService
     public SearchService(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("OpenHikeMap/1.0");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent);
     }
     public async Task<List<SearchResult>> SearchAsync(string query, double latitude, double longitude, CancellationToken cancellationToken = default)
     {
@@ -89,14 +34,19 @@ public sealed class SearchService
                 var location = locations.FirstOrDefault();
                 if (location is not null) (latitude, longitude) = (location.Latitude, location.Longitude);
             }
-            var poiResults = await SearchPoisAsync(poi, latitude, longitude, cancellationToken);
-            return poiResults.Count > 0 ? poiResults : await SearchNominatimAsync($"{poi.OsmSearchTerm} {string.Join(' ', terms.Skip(1))}".Trim(), cancellationToken);
+            try
+            {
+                var poiResults = await SearchPoisAsync(poi, latitude, longitude, cancellationToken);
+                if (poiResults.Count > 0) return poiResults;
+            }
+            catch (HttpRequestException) { }
+            return await SearchNominatimAsync($"{poi.OsmSearchTerm} {string.Join(' ', terms.Skip(1))}".Trim(), cancellationToken);
         }
         return await SearchNominatimAsync(query, cancellationToken);
     }
     private async Task<List<SearchResult>> SearchNominatimAsync(string query, CancellationToken cancellationToken)
     {
-        var url = $"https://nominatim.openstreetmap.org/search?format=jsonv2&q={Uri.EscapeDataString(query)}&limit=10";
+        var url = $"https://nominatim.openstreetmap.org/search?format=jsonv2&q={Uri.EscapeDataString(query)}&limit=10&accept-language=it";
         using var response = await _httpClient.GetAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -133,11 +83,11 @@ public sealed class RoutingService
 {
     private readonly HttpClient _httpClient;
     private readonly string _openRouteServiceApiKey;
-    public RoutingService(HttpClient httpClient)
+    public RoutingService(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("OpenHikeMap/1.0");
-        _openRouteServiceApiKey = LoadOpenRouteServiceApiKey();
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent);
+        _openRouteServiceApiKey = OpenRouteServiceCredentials.Load(configuration);
     }
     public async Task<List<RoutePathPoint>> BuildRouteAsync(IReadOnlyList<RoutePoint> points, CancellationToken cancellationToken = default)
     {
@@ -164,13 +114,15 @@ public sealed class RoutingService
     }
     private async Task<List<RoutePathPoint>> TryBuildWalkingSegmentAsync(RoutePoint from, RoutePoint to, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(_openRouteServiceApiKey))
+            throw new InvalidDataException("OpenRouteService: chiave API non configurata sul server.");
         try
         {
             if (!string.IsNullOrWhiteSpace(_openRouteServiceApiKey))
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.heigit.org/openrouteservice/v2/directions/foot-hiking/geojson");
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openrouteservice.org/v2/directions/foot-hiking/geojson");
                 request.Headers.TryAddWithoutValidation("Authorization", _openRouteServiceApiKey);
-                request.Headers.Accept.ParseAdd("application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8");
+                request.Headers.Accept.ParseAdd("application/geo+json, application/json");
                 request.Content = new StringContent(
                     JsonSerializer.Serialize(new
                     {
@@ -184,7 +136,28 @@ public sealed class RoutingService
                     System.Text.Encoding.UTF8,
                     "application/json");
                 using var response = await _httpClient.SendAsync(request, cancellationToken);
-                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                    string? detail = null;
+                    try
+                    {
+                        using var error = JsonDocument.Parse(body);
+                        if (error.RootElement.TryGetProperty("error", out var errorValue))
+                            detail = errorValue.ValueKind == JsonValueKind.String ? errorValue.GetString()
+                                : errorValue.TryGetProperty("message", out var message) ? message.GetString() : null;
+                    }
+                    catch (JsonException) { }
+                    var reason = response.StatusCode switch
+                    {
+                        System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden => "Chiave API non valida o non autorizzata.",
+                        System.Net.HttpStatusCode.TooManyRequests => "Limite di richieste raggiunto. Attendi prima di riprovare.",
+                        _ => "Il servizio non riesce a calcolare questo tratto."
+                    };
+                    detail = detail?.Replace(_openRouteServiceApiKey, "[redacted]", StringComparison.Ordinal);
+                    if (detail?.Length > 500) detail = detail[..500];
+                    throw new InvalidDataException($"OpenRouteService (HTTP {(int)response.StatusCode}): {reason} {detail}".Trim());
+                }
                 await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
                 if (document.RootElement.TryGetProperty("features", out var features) &&
@@ -200,17 +173,23 @@ public sealed class RoutingService
                             ElevationMeters = item.GetArrayLength() > 2 ? item[2].GetDouble() : null
                         })
                         .ToList();
-                    if (segment.Count > 0)
+                    if (segment.Count >= 2 && segment.All(p => WebSession.CoordinatesValid(p.Latitude, p.Longitude)))
                     {
                         return EnsureSegmentTouchesEndpoints(segment, from, to);
                     }
                 }
             }
         }
-        catch
+        catch (InvalidDataException) { throw; }
+        catch (HttpRequestException ex)
         {
+            throw new InvalidDataException("OpenRouteService non raggiungibile. Controlla la connessione del server.", ex);
         }
-        return BuildDirectSegment(from, to);
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or IndexOutOfRangeException)
+        {
+            throw new InvalidDataException("OpenRouteService ha restituito una geometria non valida.", ex);
+        }
+        throw new InvalidDataException("OpenRouteService non ha restituito una geometria del percorso.");
     }
     private static List<RoutePathPoint> BuildDirectSegment(RoutePoint from, RoutePoint to)
         =>
@@ -258,33 +237,16 @@ public sealed class RoutingService
     private static bool CoordinatesMatch(RoutePathPoint left, RoutePathPoint right)
         => Math.Abs(left.Latitude - right.Latitude) < 0.00001 &&
            Math.Abs(left.Longitude - right.Longitude) < 0.00001;
-    private static string LoadOpenRouteServiceApiKey()
-    {
-        var environmentKey = Environment.GetEnvironmentVariable("OPENHIKEMAP_ORS_API_KEY");
-        if (!string.IsNullOrWhiteSpace(environmentKey))
-        {
-            return environmentKey.Trim();
-        }
-        var appDataDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OpenHikeMap");
-        var keyFilePath = Path.Combine(appDataDirectory, "ors.key");
-        if (File.Exists(keyFilePath))
-        {
-            return File.ReadAllText(keyFilePath).Trim();
-        }
-        return string.Empty;
-    }
 }
 public sealed class ElevationService
 {
     private readonly HttpClient _httpClient;
     private readonly string _openRouteServiceApiKey;
-    public ElevationService(HttpClient httpClient)
+    public ElevationService(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("OpenHikeMap/1.0");
-        _openRouteServiceApiKey = LoadOpenRouteServiceApiKey();
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent);
+        _openRouteServiceApiKey = OpenRouteServiceCredentials.Load(configuration);
     }
     public async Task<List<RouteElevationPoint>> GetElevationProfileAsync(IReadOnlyList<RoutePathPoint> path, CancellationToken cancellationToken = default)
     {
@@ -334,23 +296,6 @@ public sealed class ElevationService
             return [];
         }
     }
-    private static string LoadOpenRouteServiceApiKey()
-    {
-        var environmentKey = Environment.GetEnvironmentVariable("OPENHIKEMAP_ORS_API_KEY");
-        if (!string.IsNullOrWhiteSpace(environmentKey))
-        {
-            return environmentKey.Trim();
-        }
-        var appDataDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OpenHikeMap");
-        var keyFilePath = Path.Combine(appDataDirectory, "ors.key");
-        if (File.Exists(keyFilePath))
-        {
-            return File.ReadAllText(keyFilePath).Trim();
-        }
-        return string.Empty;
-    }
 }
 public sealed class RouteElevationPoint
 {
@@ -358,201 +303,13 @@ public sealed class RouteElevationPoint
     public double Longitude { get; set; }
     public double ElevationMeters { get; set; }
 }
-public sealed class CivilProtectionAlertService
-{
-    private readonly HttpClient _httpClient;
-    public CivilProtectionAlertService(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("OpenHikeMap/1.0");
-    }
-    public async Task<List<CivilProtectionRegionAlert>> GetCurrentAlertsAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var html = await _httpClient.GetStringAsync("https://mappe.protezionecivile.gov.it/it/mappe-rischi/bollettino-di-criticita/index.html", cancellationToken);
-            var text = System.Net.WebUtility.HtmlDecode(System.Text.RegularExpressions.Regex.Replace(html, "<[^>]+>", "\n"));
-            var lines = text
-                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-                .Select(line => line.Trim())
-                .Where(line => !string.IsNullOrWhiteSpace(line))
-                .ToList();
-            var result = new Dictionary<string, CivilProtectionRegionAlert>(StringComparer.OrdinalIgnoreCase);
-            string? currentAlertHeader = null;
-            var inForecastSection = false;
-            foreach (var line in lines)
-            {
-                if (line.StartsWith("Per la giornata di oggi", StringComparison.OrdinalIgnoreCase) ||
-                    line.StartsWith("Per la giornata di domani", StringComparison.OrdinalIgnoreCase))
-                {
-                    inForecastSection = true;
-                    currentAlertHeader = null;
-                    continue;
-                }
-                if (line.StartsWith("Scarica i dati del bollettino", StringComparison.OrdinalIgnoreCase))
-                {
-                    inForecastSection = false;
-                }
-                if (!inForecastSection)
-                {
-                    continue;
-                }
-                if (line.Contains("ALLERTA", StringComparison.OrdinalIgnoreCase))
-                {
-                    currentAlertHeader = line;
-                    continue;
-                }
-                if (currentAlertHeader is null || !line.Contains(':'))
-                {
-                    continue;
-                }
-                var separatorIndex = line.IndexOf(':');
-                if (separatorIndex <= 0)
-                {
-                    continue;
-                }
-                var regionName = NormalizeRegionName(line[..separatorIndex].Trim());
-                var zones = line[(separatorIndex + 1)..].Trim();
-                if (string.IsNullOrWhiteSpace(regionName) || string.IsNullOrWhiteSpace(zones))
-                {
-                    continue;
-                }
-                if (!result.TryGetValue(regionName, out var regionAlert))
-                {
-                    regionAlert = new CivilProtectionRegionAlert
-                    {
-                        RegionName = regionName
-                    };
-                    result[regionName] = regionAlert;
-                }
-                var detail = $"{currentAlertHeader} {zones}";
-                regionAlert.Details.Add(detail);
-                regionAlert.Severity = GetHigherSeverity(regionAlert.Severity, GetSeverityFromHeader(currentAlertHeader));
-            }
-            return result.Values.ToList();
-        }
-        catch
-        {
-            return [];
-        }
-    }
-    private static string NormalizeRegionName(string value)
-        => value
-            .Replace("Emilia Romagna", "Emilia-Romagna", StringComparison.OrdinalIgnoreCase)
-            .Replace("Friuli Venezia Giulia", "Friuli-Venezia Giulia", StringComparison.OrdinalIgnoreCase)
-            .Replace("Trentino Alto Adige", "Trentino-Alto Adige", StringComparison.OrdinalIgnoreCase)
-            .Replace("Trentino-Alto Adige/Südtirol", "Trentino-Alto Adige", StringComparison.OrdinalIgnoreCase)
-            .Replace("Valle D'Aosta", "Valle d'Aosta", StringComparison.OrdinalIgnoreCase)
-            .Replace("Valle d'Aosta/Vallée d'Aoste", "Valle d'Aosta", StringComparison.OrdinalIgnoreCase)
-            .Replace("Provincia Autonoma di Bolzano", "Trentino-Alto Adige", StringComparison.OrdinalIgnoreCase)
-            .Replace("Provincia Autonoma di Trento", "Trentino-Alto Adige", StringComparison.OrdinalIgnoreCase);
-    private static int GetSeverityFromHeader(string header)
-    {
-        if (header.Contains("ROSSA", StringComparison.OrdinalIgnoreCase))
-        {
-            return 3;
-        }
-        if (header.Contains("ARANCIONE", StringComparison.OrdinalIgnoreCase))
-        {
-            return 2;
-        }
-        if (header.Contains("GIALLA", StringComparison.OrdinalIgnoreCase))
-        {
-            return 1;
-        }
-        return 0;
-    }
-    private static int GetHigherSeverity(int left, int right)
-        => Math.Max(left, right);
-}
-public sealed class CivilProtectionRegionAlert
-{
-    public string RegionName { get; set; } = string.Empty;
-    public int Severity { get; set; }
-    public List<string> Details { get; } = [];
-}
-public sealed class RegionBoundaryService
-{
-    private readonly HttpClient _httpClient;
-    private List<RegionBoundary>? _cache;
-    public RegionBoundaryService(HttpClient httpClient)
-    {
-        _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("OpenHikeMap/1.0");
-    }
-    public async Task<List<RegionBoundary>> GetRegionsAsync(CancellationToken cancellationToken = default)
-    {
-        if (_cache is not null)
-        {
-            return _cache;
-        }
-        var json = await _httpClient.GetStringAsync("https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson", cancellationToken);
-        using var document = JsonDocument.Parse(json);
-        var regions = new List<RegionBoundary>();
-        foreach (var feature in document.RootElement.GetProperty("features").EnumerateArray())
-        {
-            var properties = feature.GetProperty("properties");
-            var name = properties.TryGetProperty("reg_name", out var regName)
-                ? regName.GetString() ?? string.Empty
-                : properties.TryGetProperty("name", out var genericName) ? genericName.GetString() ?? string.Empty : string.Empty;
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                continue;
-            }
-            var region = new RegionBoundary { Name = NormalizeBoundaryRegionName(name) };
-            var geometry = feature.GetProperty("geometry");
-            var type = geometry.GetProperty("type").GetString() ?? string.Empty;
-            var coordinates = geometry.GetProperty("coordinates");
-            if (type == "Polygon")
-            {
-                foreach (var ring in coordinates.EnumerateArray())
-                {
-                    region.Polygons.Add(ParseRing(ring));
-                }
-            }
-            else if (type == "MultiPolygon")
-            {
-                foreach (var polygon in coordinates.EnumerateArray())
-                {
-                    foreach (var ring in polygon.EnumerateArray())
-                    {
-                        region.Polygons.Add(ParseRing(ring));
-                    }
-                }
-            }
-            if (region.Polygons.Count > 0)
-            {
-                regions.Add(region);
-            }
-        }
-        _cache = regions;
-        return regions;
-    }
-    private static List<RoutePathPoint> ParseRing(JsonElement ring)
-        => ring.EnumerateArray()
-            .Select(point => new RoutePathPoint
-            {
-                Longitude = point[0].GetDouble(),
-                Latitude = point[1].GetDouble()
-            })
-            .ToList();
-    private static string NormalizeBoundaryRegionName(string value)
-        => value
-            .Replace("Trentino-Alto Adige/Südtirol", "Trentino-Alto Adige", StringComparison.OrdinalIgnoreCase)
-            .Replace("Valle d'Aosta/Vallée d'Aoste", "Valle d'Aosta", StringComparison.OrdinalIgnoreCase);
-}
-public sealed class RegionBoundary
-{
-    public string Name { get; set; } = string.Empty;
-    public List<List<RoutePathPoint>> Polygons { get; } = [];
-}
 public sealed class WeatherService
 {
     private readonly HttpClient _httpClient;
     public WeatherService(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("OpenHikeMap/1.0");
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent);
     }
     public async Task<WeatherForecastResult?> GetForecastAsync(double latitude, double longitude, string languageCode, bool useMetric, string temperatureUnitSetting, CancellationToken cancellationToken = default)
     {
@@ -886,9 +643,9 @@ public sealed class WeatherForecastResult
 }
 public sealed class GpxService
 {
-    public GpxImportResult ImportGpx(string path)
+    public GpxImportResult ImportGpx(Stream stream)
     {
-        var document = XDocument.Load(path);
+        var document = XDocument.Load(System.Xml.XmlReader.Create(stream, new System.Xml.XmlReaderSettings { DtdProcessing = System.Xml.DtdProcessing.Prohibit, MaxCharactersInDocument = 10_000_000 }));
         XNamespace ns = "http://www.topografix.com/GPX/1/1";
         var routePoints = document.Descendants(ns + "rtept")
             .Select((point, index) => CreateRoutePoint(point, index))
@@ -948,7 +705,8 @@ public sealed class GpxService
                     new XElement(ns + "trkseg",
                         pathPoints.Select(point => new XElement(ns + "trkpt",
                             new XAttribute("lat", point.Latitude.ToString(CultureInfo.InvariantCulture)),
-                            new XAttribute("lon", point.Longitude.ToString(CultureInfo.InvariantCulture))))))));
+                            new XAttribute("lon", point.Longitude.ToString(CultureInfo.InvariantCulture)),
+                            point.ElevationMeters is { } elevation ? new XElement(ns + "ele", elevation.ToString(CultureInfo.InvariantCulture)) : null))))));
         return document.Declaration + Environment.NewLine + document;
     }
     private static RoutePoint? CreateRoutePoint(XElement point, int index)
@@ -975,7 +733,8 @@ public sealed class GpxService
         return new RoutePathPoint
         {
             Latitude = latitude,
-            Longitude = longitude
+            Longitude = longitude,
+            ElevationMeters = double.TryParse(point.Element(point.Name.Namespace + "ele")?.Value, CultureInfo.InvariantCulture, out var elevation) ? elevation : null
         };
     }
     private static bool TryReadCoordinates(XElement point, out double latitude, out double longitude)
@@ -1006,9 +765,9 @@ public sealed class KmlService
                                     $"{place.Longitude.ToString(CultureInfo.InvariantCulture)},{place.Latitude.ToString(CultureInfo.InvariantCulture)},0")))))));
         return document.Declaration + Environment.NewLine + document;
     }
-    public List<SavedPlace> ImportPlaces(string path)
+    public List<SavedPlace> ImportPlaces(Stream stream)
     {
-        var document = XDocument.Load(path);
+        var document = XDocument.Load(System.Xml.XmlReader.Create(stream, new System.Xml.XmlReaderSettings { DtdProcessing = System.Xml.DtdProcessing.Prohibit, MaxCharactersInDocument = 10_000_000 }));
         XNamespace ns = "http://www.opengis.net/kml/2.2";
         var styles = document.Descendants(ns + "Style")
             .Where(style => style.Attribute("id") is not null)
@@ -1056,49 +815,6 @@ public sealed class KmlService
         return $"#{rr}{gg}{bb}";
     }
 }
-public sealed class ThemeService
-{
-    public void ApplyTheme(Application application, string themeMode)
-    {
-        var dark = themeMode.Equals("Dark", StringComparison.OrdinalIgnoreCase)
-            || (themeMode.Equals("System", StringComparison.OrdinalIgnoreCase) && IsSystemDark());
-        var prefix = dark ? "Dark" : "Light";
-        application.Resources["WindowBackgroundBrush"] = application.Resources[$"{prefix}WindowBackgroundColor"].ToBrush();
-        application.Resources["PanelBackgroundBrush"] = application.Resources[$"{prefix}PanelBackgroundColor"].ToBrush();
-        application.Resources["HeaderBackgroundBrush"] = application.Resources[$"{prefix}HeaderBackgroundColor"].ToBrush();
-        application.Resources["CardBackgroundBrush"] = application.Resources[$"{prefix}CardBackgroundColor"].ToBrush();
-        application.Resources["PrimaryTextBrush"] = application.Resources[$"{prefix}PrimaryTextColor"].ToBrush();
-        application.Resources["SecondaryTextBrush"] = application.Resources[$"{prefix}SecondaryTextColor"].ToBrush();
-        application.Resources["MutedTextBrush"] = application.Resources[$"{prefix}MutedTextColor"].ToBrush();
-        application.Resources["AccentBrush"] = application.Resources[$"{prefix}AccentColor"].ToBrush();
-        application.Resources["AccentMutedBrush"] = application.Resources[$"{prefix}AccentMutedColor"].ToBrush();
-        application.Resources["BorderBrush"] = application.Resources[$"{prefix}BorderColor"].ToBrush();
-        application.Resources["MapHostBrush"] = application.Resources[$"{prefix}MapHostColor"].ToBrush();
-        application.Resources["InputBackgroundBrush"] = application.Resources[$"{prefix}InputBackgroundColor"].ToBrush();
-        application.Resources["InputForegroundBrush"] = application.Resources[$"{prefix}InputForegroundColor"].ToBrush();
-        application.Resources["InputBorderBrush"] = application.Resources[$"{prefix}InputBorderColor"].ToBrush();
-        application.Resources["MenuPopupBackgroundBrush"] = application.Resources[$"{prefix}MenuPopupBackgroundColor"].ToBrush();
-        application.Resources["MenuItemHoverBrush"] = application.Resources[$"{prefix}MenuItemHoverColor"].ToBrush();
-    }
-    private static bool IsSystemDark()
-    {
-        try
-        {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-            var value = key?.GetValue("AppsUseLightTheme");
-            return value is int intValue && intValue == 0;
-        }
-        catch
-        {
-            return true;
-        }
-    }
-}
-public static class BrushExtensions
-{
-    public static SolidColorBrush ToBrush(this object resource)
-    {
-        var color = resource is Color typedColor ? typedColor : Colors.Transparent;
-        return new SolidColorBrush(color);
-    }
-}
+
+
+

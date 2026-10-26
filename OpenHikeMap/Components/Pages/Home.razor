@@ -1,0 +1,172 @@
+@page "/"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject SearchService Search
+@inject RoutingService Routing
+@inject WeatherService Weather
+@inject GpxService Gpx
+@inject ILogger<Home> Logger
+@inject CivilProtectionService CivilProtection
+@inject AppSettingsStore SettingsStore
+
+<PageTitle>@ApplicationInfo.WindowTitle</PageTitle>
+<div class="app-shell" data-theme="@Data.Settings.ThemeMode.ToLowerInvariant()">
+    <header class="app-header">
+        <div class="brand"><img class="brand-mark" src="@($"assets/brand/mountain.svg?v={ClientAssetVersion.Value}")" alt="" aria-hidden="true" /><div><h1>OpenHikeMap</h1><small>YOUR NEXT HIKE.</small></div></div>
+        <span class="header-separator" aria-hidden="true"></span>
+        <div class="header-tools">
+        <select aria-label="Stile mappa" @bind="Data.Settings.MapStyle" @bind:after="Refresh">
+            @foreach (var style in MapStyles)
+            {
+                <option>@style</option>
+            }
+        </select>
+        <button class="tool-icon @(Data.Settings.ShowHikingTrails ? "active" : "")" title="@L["TrailsOverlay"]" aria-label="@L["TrailsOverlay"]" @onclick="ToggleTrails"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="19" r="3" /><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /><circle cx="18" cy="5" r="3" /></svg></button>
+        <button class="tool-icon @(Data.Settings.ShowSatelliteOverlay ? "active" : "")" title="@L["SatelliteOverlay"]" aria-label="@L["SatelliteOverlay"]" @onclick="ToggleSatellite"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></svg></button>
+        <button class="tool-icon @(Data.Settings.ShowContourLines ? "active" : "")" title="@L["ContoursOverlay"]" aria-label="@L["ContoursOverlay"]" @onclick="ToggleContours"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 4 8 5-5 5 15H2L8 3z" /></svg></button>
+        <button class="tool-icon @(Data.Settings.ShowCivilProtectionAlerts ? "active" : "")" title="@L["ToolbarCivilAlerts"]" aria-label="@L["ToolbarCivilAlerts"]" aria-pressed="@Data.Settings.ShowCivilProtectionAlerts" @onclick="ToggleCivilAlerts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2zM12 15h.01M12 7v4"/></svg></button>
+        <button class="tool-icon @(Data.Settings.ShowBearingCircle ? "active" : "")" title="@L["ToolbarBearingCircle"]" aria-label="@L["ToolbarBearingCircle"]" aria-pressed="@Data.Settings.ShowBearingCircle" @onclick="ToggleBearing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2A10 10 0 1 0 12 22A10 10 0 1 0 12 2M22 12h-4M6 12H2M12 6V2M12 22v-4"/></svg></button>
+        <button class="tool-icon @(Data.Settings.ShowMapScale ? "active" : "")" title="Scala mappa" aria-label="Scala mappa" @onclick="ToggleScale"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.3 15.3A2.4 2.4 0 0 1 21.3 18.7L18.7 21.3A2.4 2.4 0 0 1 15.3 21.3L2.7 8.7A2.41 2.41 0 0 1 2.7 5.3L5.3 2.7A2.41 2.41 0 0 1 8.7 2.7Z" /><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2" /></svg></button>
+        <button class="tool-icon @(Data.Settings.ShowSavedPoints ? "active" : "")" title="@L["ToolbarShowSaved"]" aria-label="@L["ToolbarShowSaved"]" @onclick="ToggleSavedPoints"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" /></svg></button>
+        <button class="tool-icon @(Mode == "ruler" ? "active" : "")" title="Strumento righello" aria-label="Strumento righello" @onclick='() => SetMode("ruler")'><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 15v-3m4 3v-3m4 3v-3M2 8V4m20 2H2m20 2V4M6 15v-3M4 12h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z" /></svg></button>
+        <button @onclick="FitRoute" disabled="@(Data.RoutePoints.Count == 0)">@L["FitRouteButton"]</button>
+        <span class="header-separator" aria-hidden="true"></span>
+        <div class="header-search" @onfocusin="ShowSearchResults"><form @onsubmit="Find" @onsubmit:preventDefault>
+            <label class="sr-only" for="search">@L["SearchLabel"]</label>
+            <div class="search-box"><input id="search" placeholder="@L["SearchPlaceholder"]" @bind="Query" @bind:event="oninput" /><button type="submit" disabled="@Busy">@L["SearchButton"]</button></div>
+        </form>
+        @if (SearchOpen && Results.Count > 0)
+        {
+            <div class="header-search-results" @onclick="DismissSearch">@foreach (var result in Results) { <div class="search-result"><button class="text-button" @onclick="() => Center(result.Latitude, result.Longitude)">@result.DisplayName</button><small>@result.Subtitle</small><button @onclick="() => SaveResult(result)">+ Pin</button><button @onclick="() => AddStop(result.Latitude, result.Longitude, result.DisplayName)">+ Tappa</button></div> }</div>
+        }
+        </div></div>
+        <nav class="header-nav" aria-label="@L["TransferToolbarLabel"]">
+            <button class="tool-icon" title="@L["ToolbarExport"]" aria-label="@L["ToolbarExport"]" @onclick="() => Dialog = 'e'"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg></button>
+            <button class="tool-icon" title="@L["ToolbarImport"]" aria-label="@L["ToolbarImport"]" @onclick="() => Dialog = 'i'"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></button>
+            <button class="tool-icon" title="@L["ToolbarSettings"]" aria-label="@L["ToolbarSettings"]" @onclick="OpenSettings"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg></button>
+            <button class="tool-icon" title="@L["ToolbarAbout"]" aria-label="@L["ToolbarAbout"]" @onclick="() => Dialog = 'a'"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></button>
+        </nav>
+    </header>
+    <main class="workspace">
+        <aside class="library panel">
+            <div class="section-kicker">@L["ExploreKicker"]</div><h2>@L["LeftPaneHeader"]</h2>
+            <div class="section-title"><h3>@L["SavedPlacesGroup"]</h3><span class="count">@Data.Places.Count</span></div>
+            <input aria-label="Filtra punti salvati" placeholder="Filtra la libreria…" @bind="Filter" @bind:event="oninput" />
+            <div class="button-row"><button @onclick="NewFolder">+ Cartella</button><button @onclick='() => OpenCoordinates("pin")'>+ Coordinate</button></div>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowSavedPoints" @bind:after="Refresh" /> @L["ToolbarShowSaved"]</label>
+            <div class="saved-tree">
+                @foreach (var entry in SavedTree)
+                {
+                    @if (entry.Folder is { } folder)
+                    {
+                        <div class="tree-row folder-row" style="--tree-depth:@entry.Depth" @oncontextmenu:preventDefault @oncontextmenu="() => OpenFolderEditor(folder)"><button class="tree-toggle" aria-label="@(IsFolderCollapsed(folder) ? "Espandi cartella" : "Comprimi cartella")" aria-expanded="@(!IsFolderCollapsed(folder))" disabled="@(!FolderHasChildren(folder))" @onclick="() => ToggleFolder(folder)">@(IsFolderCollapsed(folder) ? "▸" : "▾")</button><input type="checkbox" aria-label="Visibilità cartella" @bind="folder.IsEnabled" @bind:after="Refresh" /><button class="text-button tree-folder-name" @onclick="() => SelectFolder(folder)">@folder.Name</button></div>
+                    }
+                    else if (entry.Place is { } place)
+                    {
+                        <div class="tree-row place-row @(SelectedPlace == place ? "selected" : "")" style="--tree-depth:@entry.Depth"><input aria-label="Visibilità punto" type="checkbox" @bind="place.IsVisible" @bind:after="Refresh" /><button class="text-button" @onclick="() => SelectPlace(place)" @ondblclick="() => Center(place.Latitude, place.Longitude)" @ondblclick:preventDefault @oncontextmenu:preventDefault @oncontextmenu="() => OpenPlaceContext(place.Id)"><span class="pin-dot" style="background:@Appearances.Resolve(place).PinColorHex"></span><strong>@place.Name</strong><small>@place.CoordinateSummary</small></button></div>
+                    }
+                }
+            </div>
+            @if (Data.Places.Count == 0) { <div class="empty"><span>⌖</span><p>Conserva i luoghi da esplorare.</p><small>Seleziona «Aggiungi pin» e clicca sulla mappa, oppure cerca una località.</small></div> }
+        </aside>
+        <section class="map-column" aria-label="Mappa e profilo altimetrico">
+            <div class="map-wrap">
+                <div id="map" aria-label="Mappa interattiva"></div>
+                @if (!Ready)
+                {
+                    <div class="map-startup" role="status"><span>@L[MapInitializationFailed ? "MapStartupFailed" : "MapLoading"]</span>@if (MapInitializationFailed) { <button @onclick="InitializeMap">@L["MapRetry"]</button> }</div>
+                }
+                <div class="map-tools" aria-label="Modalità clic sulla mappa">
+                    <button class="@(Mode == "explore" ? "active" : "")" @onclick='() => SetMode("explore")'>@L["ExploreKicker"]</button>
+                    <button class="@(Mode == "pin" ? "active" : "")" @onclick='() => SetMode("pin")'>+ Aggiungi pin</button>
+                    <button class="@(Mode == "route" ? "active" : "")" @onclick='() => SetMode("route")'>+ Tappa</button>
+                </div>
+                <div class="map-hint">@ModeHint</div>
+            </div>
+        </section>
+        <aside class="details panel">
+            <div class="section-kicker">@L["PlanKicker"]</div><h2>@L["RightPaneHeader"]</h2>
+            <section><div class="section-title"><h3>@L["RoutePlanningGroup"]</h3><button @onclick='() => OpenCoordinates("route")'>+</button></div>
+                @if (Data.RoutePoints.Count == 0) { <p class="subtle">@L["RouteEmpty"]</p> }
+                @for (var i = 0; i < Data.RoutePoints.Count; i++)
+                {
+                    var index = i; var stop = Data.RoutePoints[i];
+                    <div class="stop-card"><span class="stop-number">@StopNumber(index)</span><div><strong>@StopTitle(index)</strong><input aria-label="Nome tappa" @bind="stop.Name" @bind:after="Save" /><small>@stop.CoordinateSummary</small><select aria-label="Tipo tappa" @bind="stop.PointType" @bind:after="DraftRoute"><option value="Start">Partenza</option><option value="Waypoint">Waypoint</option><option value="DirectWaypoint">Waypoint diretto</option><option value="End">Arrivo</option></select></div><div class="stop-actions"><button title="Sposta su" disabled="@(i == 0)" @onclick="() => MoveStop(index, -1)">↑</button><button title="Sposta giù" disabled="@(i == Data.RoutePoints.Count - 1)" @onclick="() => MoveStop(index, 1)">↓</button><button title="Elimina tappa" @onclick="() => RemoveStop(index)">×</button></div></div>
+                }
+                <div class="button-row"><button class="route-command" disabled="@(Busy || Data.RoutePoints.Count == 0)" @onclick="ClearRoute">@L["DeleteRouteButton"]</button></div>
+                @if (IsRouting) { <p class="subtle" role="status">@L["RouteCalculating"]</p> }
+                @if (!string.IsNullOrEmpty(RouteError)) { <p role="alert" style="color:#b53e35;overflow-wrap:anywhere;margin:8px 0">@RouteError</p> }
+            </section>
+            <section class="weather"><div class="section-title"><h3>@L["WeatherGroup"]</h3><button disabled="@WeatherBusy" @onclick="LoadWeather">@L["RefreshButton"]</button></div>
+                @if (Data.Settings.ShowCivilProtectionAlerts && !string.IsNullOrEmpty(CivilAlertSummary)) { <p class="civil-alert-summary" role="status">@CivilAlertSummary</p> }
+                @if (Forecast is not null)
+                {
+                    <p class="subtle">@L["WeatherUpdated"]: @Forecast.UpdatedLabel</p>
+                    @foreach (var day in Forecast.Days)
+                    {
+                        <div class="weather-card weather-@day.WeatherIconKey">
+                            <strong class="weather-day">@day.DayLabel</strong>
+                            <div class="weather-description"><span class="weather-condition"><WeatherGlyph Kind="@day.WeatherIconKey" />@day.WeatherLabel</span><span>@day.TemperatureLabel</span><span class="weather-sun-times"><span title="@L["WeatherSunrise"]"><WeatherGlyph Kind="sunrise" />@day.SunriseLabel</span><span title="@L["WeatherSunset"]"><WeatherGlyph Kind="sunset" />@day.SunsetLabel</span></span></div>
+                            <div class="weather-details"><span>@day.WindLabel @day.WindDirectionLabel</span><span title="@L["WeatherPrecipitation"]"><WeatherGlyph Kind="umbrella" />@day.RainLabel</span><span><WeatherGlyph Kind="uv" />@day.UvLabel</span></div>
+                        </div>
+                    }
+                }
+                else { <p class="subtle">@WeatherStatus</p> }
+            </section>
+        </aside>
+        <ElevationProfile Geometry="Data.RouteGeometry" Settings="Data.Settings" Completed="@(Data.RoutePoints.Any(p => p.PointType == "End"))" />
+    </main>
+    <footer class="status-bar" role="status"><span class="status-dot"></span><span>@(Busy ? "Operazione in corso…" : Status)</span><span class="storage-label">@L["StorageLocalLabel"]</span></footer>
+</div>
+@if (Dialog != '\0')
+{
+    <div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-label="OpenHikeMap"><button class="close-modal" aria-label="@L["CloseWindow"]" @onclick="() => Dialog = '\0'">×</button>
+        @if (Dialog == 'e')
+        {
+            <h2>@L["ExportTitle"]</h2><p>@L["ExportIntro"]</p>
+            <div class="file-grid"><button disabled="@(Busy || IsRouting || Data.RoutePoints.Count == 0)" @onclick='() => Export("session")'>@L["ExportRouteAction"]</button><button disabled="@(Busy || IsRouting || Data.RoutePoints.Count == 0)" @onclick='() => Export("gpx")'>@L["ExportGpxAction"]</button><button disabled="@Busy" @onclick='() => Export("backup")'>@L["ExportBackupAction"]</button></div>
+        }
+        else if (Dialog == 'i')
+        {
+            <h2>@L["ImportTitle"]</h2><p>@L["ImportIntro"]</p>
+            <label class="upload">@L["ImportFileLabel"]<InputFile id="transfer-upload" OnChange="Import" accept=".gpx,.ohk,.json" disabled="@Busy" aria-label="@L["ImportFileLabel"]" /></label>
+        }
+        else if (Dialog == 's')
+        {
+            <div class="section-kicker">PREFERENZE</div><h2>@L["SettingsWindowTitle"]</h2>
+            <label>Lingua<select @bind="Data.Settings.LanguageCode" @bind:after="ApplySettings"><option value="it-IT">Italiano</option><option value="en-US">English</option><option value="fr-FR">Français</option><option value="es-ES">Español</option><option value="de-DE">Deutsch</option><option value="nl-NL">Nederlands</option><option value="nb-NO">Norsk</option><option value="da-DK">Dansk</option><option value="sv-SE">Svenska</option><option value="fi-FI">Suomi</option></select></label>
+            <label>Tema<select @bind="Data.Settings.ThemeMode" @bind:after="ApplySettings"><option value="System">Sistema</option><option value="Light">Chiaro</option><option value="Dark">Scuro</option></select></label>
+            <label>Unità<select @bind="Data.Settings.UnitPreset" @bind:after="ChangeUnits"><option value="Metric">Metriche</option><option value="Imperial">Imperiali</option></select></label>
+            <label>Velocità di cammino (@Data.Settings.SpeedUnit)<input type="number" min="0.1" max="30" step="0.1" @bind="Data.Settings.TravelSpeed" @bind:after="AutoSaveSettings" /></label>
+            <div class="two-col"><label>Latitudine home<input type="number" step="any" @bind="Data.Settings.DefaultLatitude" @bind:after="AutoSaveSettings" /></label><label>Longitudine home<input type="number" step="any" @bind="Data.Settings.DefaultLongitude" @bind:after="AutoSaveSettings" /></label></div>
+            <label>Zoom home<input type="number" min="2" max="19" @bind="Data.Settings.DefaultZoom" @bind:after="AutoSaveSettings" /></label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowBearingCircle" @bind:after="Refresh" /> @L["ToolbarBearingCircle"]</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowCivilProtectionAlerts" @bind:after="ApplySettings" /> @L["SettingsCivilAlerts"]</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowHikingTrails" @bind:after="Refresh" /> @L["TrailsOverlay"]</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowSatelliteOverlay" @bind:after="Refresh" /> @L["SatelliteOverlay"]</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowContourLines" @bind:after="Refresh" /> @L["ContoursOverlay"]</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowMapScale" @bind:after="Refresh" /> Scala mappa</label>
+            <button class="primary wide" @onclick="SaveSettings">Salva impostazioni</button>
+        }
+        else if (Dialog == 'd' && SelectedFolder is not null)
+        {
+            <h2>@L["FolderEditorTitle"]</h2>
+            <label for="folder-name">@L["NameLabel"]<input id="folder-name" @bind="FolderDraftName" /></label>
+            <label for="folder-icon">@L["FolderDefaultIcon"]<select id="folder-icon" @bind="FolderDraftIcon"><option value="">@L["InheritAppearance"]</option>@foreach (var icon in Icons) { <option value="@icon.Key">@L["Icon_" + icon.Key]</option> }</select></label>
+            <label for="folder-color">@L["FolderDefaultColor"]<select id="folder-color" @bind="FolderDraftColor"><option value="">@L["InheritAppearance"]</option>@foreach (var color in PinColors) { <option value="@color.Key">@L[color.Value]</option> }@if (!string.IsNullOrEmpty(FolderDraftColor) && !PinColors.ContainsKey(FolderDraftColor)) { <option value="@FolderDraftColor">@L["ColorCurrent"]</option> }</select></label>
+            <p>@L["FolderInheritanceHint"]</p>
+            <button class="wide" disabled="@Busy" @onclick="ForceFolderColors">@L["FolderForceColors"]</button>
+            @if (!string.IsNullOrEmpty(FolderError)) { <p role="alert">@FolderError</p> }
+            <div class="button-row"><button @onclick="() => Dialog = '\0'">@L["CancelButton"]</button><button class="primary" @onclick="SaveFolderEditor">@L["MapContextSave"]</button></div>
+        }
+        else if (Dialog == 'c')
+        {
+            <div class="section-kicker">NUOVO PUNTO</div><h2>Aggiungi da coordinate</h2><label>Nome<input @bind="CoordinateName" /></label>
+            <div class="two-col"><label>Latitudine<input type="number" step="any" @bind="CoordinateLat" /></label><label>Longitudine<input type="number" step="any" @bind="CoordinateLon" /></label></div>
+            <button class="primary wide" @onclick="AddCoordinates">Aggiungi</button>
+        }
+        else { <div class="section-kicker">PRONTO PER ESPLORARE</div><h2>OpenHikeMap</h2><p>Applicazione Windows per consultare mappe, gestire luoghi, pianificare tracce e visualizzare profilo altimetrico e meteo.</p><p>Mappe © OpenStreetMap contributors; rilievo OpenTopoMap, sentieri Waymarked Trails, immagini Esri, meteo Open-Meteo. Libreria Leaflet inclusa con licenza BSD-2-Clause. Codice del progetto sotto GPL-3.0.</p><p>Le linee tratteggiate rappresentano una bozza diretta. Il calcolo sui sentieri dipende dalla configurazione del servizio cartografico.</p><p>I dati sono conservati nel profilo locale dell’applicazione. Usa il backup per trasferirli su altri dispositivi.</p> }
+        <p class="modal-status" role="status">@Status</p>
+    </section></div>
+}

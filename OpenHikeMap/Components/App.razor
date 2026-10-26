@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="icon" type="image/svg+xml" href="@($"assets/brand/mountain.svg?v={ClientAssetVersion.Value}")" />
+    <link rel="preload" as="script" href="@($"lib/leaflet/leaflet.js?v={ClientAssetVersion.Value}")" />
+    <link rel="stylesheet" href="@($"lib/leaflet/leaflet.css?v={ClientAssetVersion.Value}")" />
+    <link rel="stylesheet" href="@($"app.css?v={ClientAssetVersion.Value}")" />
+    <link rel="stylesheet" href="@($"css/map-overrides.css?v={ClientAssetVersion.Value}")" />
+    <HeadOutlet />
+</head>
+<body>
+    <Routes />
+    <div id="blazor-error-ui" role="alert">Connessione interrotta o errore applicativo. <a href="">Ricarica</a></div>
+    <script src="@($"_framework/blazor.web.js?v={ClientAssetVersion.Value}")"></script>
+</body>
+</html>

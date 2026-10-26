@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-namespace OpenHikeMap;
+namespace OpenHikeMap.Models;
 public abstract class BindableBase : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -18,7 +18,7 @@ public abstract class BindableBase : INotifyPropertyChanged
     protected void RaisePropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
-public sealed class LocalizationService : BindableBase
+public sealed partial class LocalizationService : BindableBase
 {
     private string _languageCode = "it-IT";
     private static readonly Dictionary<string, Dictionary<string, string>> Dictionaries = new()
@@ -58,6 +58,21 @@ public sealed class LocalizationService : BindableBase
             ["ToolbarGoHome"] = "Vai a home",
             ["ToolbarSearch"] = "Cerca",
             ["ToolbarSearchPlaceholder"] = "Ricerca qui un luogo",
+            ["BrandTagline"] = "YOUR NEXT HIKE.",
+            ["FitRouteButton"] = "Inquadra traccia",
+            ["SearchPlaceholder"] = "Luoghi, rifugi, cime…",
+            ["ExploreKicker"] = "ESPLORA",
+            ["PlanKicker"] = "PIANIFICA",
+            ["RouteEmpty"] = "Aggiungi partenza e arrivo cliccando sulla mappa.",
+            ["RouteStartLabel"] = "Partenza",
+            ["RouteEndLabel"] = "Arrivo",
+            ["RouteWaypointLabel"] = "Tappa",
+            ["RouteCalculating"] = "Calcolo traccia in corso…",
+            ["CalculateRouteButton"] = "Calcola traccia",
+            ["DeleteRouteButton"] = "Elimina traccia",
+            ["ExportGpxButton"] = "Esporta GPX",
+            ["RefreshButton"] = "Aggiorna",
+            ["WeatherInitialPrompt"] = "Premi Aggiorna per caricare le previsioni.",
             ["MapLegendGroup"] = "Legenda mappa",
             ["MapLegendEmpty"] = "Nessun sentiero visibile nell'area corrente.",
             ["ToolbarMapStyle"] = "Mappa",
@@ -71,6 +86,22 @@ public sealed class LocalizationService : BindableBase
             ["SavedPlacesGroup"] = "Elementi salvati",
             ["SavedPlacesSearchLabel"] = "Cerca nei punti salvati",
             ["NewFolderButton"] = "Nuova cartella",
+            ["FolderEditorTitle"] = "Modifica cartella",
+            ["FolderDefaultIcon"] = "Icona di default",
+            ["FolderDefaultColor"] = "Colore di default",
+            ["InheritAppearance"] = "Eredita dalla cartella superiore",
+            ["FolderInheritanceHint"] = "Le impostazioni vengono ereditate dagli elementi e dalle sottocartelle senza un valore specificato. I valori espliciti restano invariati.",
+            ["FolderNameRequired"] = "Inserisci un nome per la cartella.",
+            ["FolderForceColors"] = "Forza impostazioni sugli elementi contenuti",
+            ["FolderForceColorsConfirm"] = "Salvare le impostazioni della cartella e rimuovere i colori personalizzati di tutti i pin contenuti, incluse le sottocartelle? I pin erediteranno il colore della cartella di appartenenza. Le icone non saranno modificate.",
+            ["SettingsDiskReadFailed"] = "Impossibile leggere le impostazioni su disco. Il file non verrà sovrascritto automaticamente.",
+            ["SettingsDiskSaveFailed"] = "Impossibile salvare le impostazioni su disco. Controlla i permessi della cartella OpenHikeMap.",
+            ["SettingsDiskReplaceConfirm"] = "Il file delle impostazioni su disco non è leggibile. Sostituirlo con le impostazioni attuali?",
+            ["ColorGreen"] = "Verde", ["ColorRed"] = "Rosso", ["ColorBlue"] = "Blu", ["ColorOrange"] = "Arancione",
+            ["ColorBrown"] = "Marrone", ["ColorPurple"] = "Viola", ["ColorGold"] = "Oro", ["ColorGray"] = "Grigio", ["ColorCurrent"] = "Colore attuale",
+            ["Icon_poi"] = "Punto panoramico", ["Icon_bivouac"] = "Bivacco", ["Icon_fountain"] = "Fontana", ["Icon_food"] = "Ristoro",
+            ["Icon_paid_hut"] = "Rifugio", ["Icon_single_tent"] = "Tenda", ["Icon_tent_area"] = "Campeggio", ["Icon_parking"] = "Parcheggio",
+            ["Icon_cable_car"] = "Funivia", ["Icon_hammocks"] = "Bosco", ["Icon_waterfall"] = "Cascata", ["Icon_water"] = "Acqua", ["Icon_summit_cross"] = "Croce di vetta",
             ["RootFolderName"] = "Punti salvati",
             ["NewButton"] = "Nuovo",
             ["DuplicateButton"] = "Duplica",
@@ -100,6 +131,11 @@ public sealed class LocalizationService : BindableBase
             ["ProfileTimeLabel"] = "Tempo",
             ["ProfileElevationLabel"] = "Dislivello",
             ["ProfileSlopeLabel"] = "Pendenza media",
+            ["ProfileAltitudeLabel"] = "Altitudine",
+            ["ProfileHoverSlope"] = "Pendenza",
+            ["ProfileChartDescription"] = "Altitudine in funzione della distanza. Muovi il puntatore o usa le frecce per esplorare il percorso.",
+            ["ProfileNoElevation"] = "Quote non disponibili per questa traccia.",
+            ["ProfileEmpty"] = "Imposta partenza e arrivo per visualizzare il profilo altimetrico.",
             ["OverlayGroup"] = "Overlay",
             ["ColoredTrails"] = "Sentieri colorati",
             ["SearchContextCenter"] = "Centra su risultato",
@@ -110,6 +146,8 @@ public sealed class LocalizationService : BindableBase
             ["MapContextSetStart"] = "Imposta come punto di partenza",
             ["MapContextSetWaypoint"] = "Imposta come waypoint",
             ["MapContextSetDirectWaypoint"] = "Imposta come waypoint diretto",
+            ["MapContextEdit"] = "Modifica elemento",
+            ["MapContextSave"] = "Salva modifiche",
             ["SettingsWindowTitle"] = "Impostazioni",
             ["SettingsTabAppearance"] = "Aspetto",
             ["SettingsTabUnits"] = "Unità",
@@ -162,6 +200,9 @@ public sealed class LocalizationService : BindableBase
             ["CivilAlertTitle"] = "Allerta Protezione Civile",
             ["CivilAlertNone"] = "Nessuna allerta SNPC-IT sulla zona della traccia.",
             ["CivilAlertLoading"] = "Verifica allerte SNPC-IT in corso...",
+            ["CivilAlertUnavailable"] = "Allerte SNPC-IT non disponibili. Impossibile verificare il bollettino.",
+            ["WeatherSunrise"] = "Alba",
+            ["WeatherSunset"] = "Tramonto",
             ["RoutePointsInserted"] = "Tappe inserite"
         },
         ["en-US"] = new()
@@ -199,6 +240,21 @@ public sealed class LocalizationService : BindableBase
             ["ToolbarGoHome"] = "Go home",
             ["ToolbarSearch"] = "Search",
             ["ToolbarSearchPlaceholder"] = "Search a place here",
+            ["BrandTagline"] = "YOUR NEXT HIKE.",
+            ["FitRouteButton"] = "Fit route",
+            ["SearchPlaceholder"] = "Places, huts, peaks…",
+            ["ExploreKicker"] = "EXPLORE",
+            ["PlanKicker"] = "PLAN",
+            ["RouteEmpty"] = "Add a start and destination by clicking on the map.",
+            ["RouteStartLabel"] = "Start",
+            ["RouteEndLabel"] = "Destination",
+            ["RouteWaypointLabel"] = "Stop",
+            ["RouteCalculating"] = "Calculating route…",
+            ["CalculateRouteButton"] = "Calculate route",
+            ["DeleteRouteButton"] = "Delete route",
+            ["ExportGpxButton"] = "Export GPX",
+            ["RefreshButton"] = "Refresh",
+            ["WeatherInitialPrompt"] = "Press Refresh to load the forecast.",
             ["MapLegendGroup"] = "Map legend",
             ["MapLegendEmpty"] = "No trails visible in the current area.",
             ["ToolbarMapStyle"] = "Map",
@@ -212,6 +268,22 @@ public sealed class LocalizationService : BindableBase
             ["SavedPlacesGroup"] = "Saved items",
             ["SavedPlacesSearchLabel"] = "Search saved points",
             ["NewFolderButton"] = "New folder",
+            ["FolderEditorTitle"] = "Edit folder",
+            ["FolderDefaultIcon"] = "Default icon",
+            ["FolderDefaultColor"] = "Default color",
+            ["InheritAppearance"] = "Inherit from parent folder",
+            ["FolderInheritanceHint"] = "Items and subfolders without an explicit value inherit these defaults. Explicit values remain unchanged.",
+            ["FolderNameRequired"] = "Enter a folder name.",
+            ["FolderForceColors"] = "Force settings on contained items",
+            ["FolderForceColorsConfirm"] = "Save the folder settings and remove custom colors from every contained pin, including subfolders? Pins will inherit their containing folder's color. Icons will not be changed.",
+            ["SettingsDiskReadFailed"] = "Cannot read settings from disk. The file will not be overwritten automatically.",
+            ["SettingsDiskSaveFailed"] = "Cannot save settings to disk. Check permissions for the OpenHikeMap folder.",
+            ["SettingsDiskReplaceConfirm"] = "The settings file cannot be read. Replace it with the current settings?",
+            ["ColorGreen"] = "Green", ["ColorRed"] = "Red", ["ColorBlue"] = "Blue", ["ColorOrange"] = "Orange",
+            ["ColorBrown"] = "Brown", ["ColorPurple"] = "Purple", ["ColorGold"] = "Gold", ["ColorGray"] = "Gray", ["ColorCurrent"] = "Current color",
+            ["Icon_poi"] = "Scenic point", ["Icon_bivouac"] = "Bivouac", ["Icon_fountain"] = "Fountain", ["Icon_food"] = "Food",
+            ["Icon_paid_hut"] = "Mountain hut", ["Icon_single_tent"] = "Tent", ["Icon_tent_area"] = "Campsite", ["Icon_parking"] = "Parking",
+            ["Icon_cable_car"] = "Cable car", ["Icon_hammocks"] = "Woodland", ["Icon_waterfall"] = "Waterfall", ["Icon_water"] = "Water", ["Icon_summit_cross"] = "Summit cross",
             ["RootFolderName"] = "Saved points",
             ["NewButton"] = "New",
             ["DuplicateButton"] = "Duplicate",
@@ -241,6 +313,11 @@ public sealed class LocalizationService : BindableBase
             ["ProfileTimeLabel"] = "Time",
             ["ProfileElevationLabel"] = "Elevation",
             ["ProfileSlopeLabel"] = "Average slope",
+            ["ProfileAltitudeLabel"] = "Altitude",
+            ["ProfileHoverSlope"] = "Gradient",
+            ["ProfileChartDescription"] = "Elevation along the route distance. Move the pointer or use arrow keys to explore the route.",
+            ["ProfileNoElevation"] = "Elevation data is unavailable for this route.",
+            ["ProfileEmpty"] = "Set a start and destination to display the elevation profile.",
             ["OverlayGroup"] = "Overlay",
             ["ColoredTrails"] = "Colored trails",
             ["SearchContextCenter"] = "Center on result",
@@ -251,6 +328,8 @@ public sealed class LocalizationService : BindableBase
             ["MapContextSetStart"] = "Set as start point",
             ["MapContextSetWaypoint"] = "Set as waypoint",
             ["MapContextSetDirectWaypoint"] = "Set as direct waypoint",
+            ["MapContextEdit"] = "Edit item",
+            ["MapContextSave"] = "Save changes",
             ["SettingsWindowTitle"] = "Settings",
             ["SettingsTabAppearance"] = "Appearance",
             ["SettingsTabUnits"] = "Units",
@@ -301,6 +380,9 @@ public sealed class LocalizationService : BindableBase
             ["CivilAlertTitle"] = "Civil Protection alert",
             ["CivilAlertNone"] = "No SNPC-IT alert for the route area.",
             ["CivilAlertLoading"] = "Checking SNPC-IT alerts...",
+            ["CivilAlertUnavailable"] = "SNPC-IT alerts unavailable. The bulletin could not be checked.",
+            ["WeatherSunrise"] = "Sunrise",
+            ["WeatherSunset"] = "Sunset",
             ["RoutePointsInserted"] = "Route points inserted"
         },
         ["fr-FR"] = new(),
@@ -389,6 +471,19 @@ public sealed class LocalizationService : BindableBase
         ApplyTranslations("da-DK", new Dictionary<string, string> { ["MenuFile"] = "Fil", ["MenuSettings"] = "Indstillinger", ["SearchButton"] = "Søg", ["SavedPlacesGroup"] = "Gemte elementer", ["MapLegendGroup"] = "Kortforklaring", ["MapLegendEmpty"] = "Ingen stier synlige i det aktuelle område.", ["WeatherGroup"] = "Vejr", ["WeatherUpdated"] = "Opdateret", ["ToolbarSearch"] = "Søg", ["ToolbarSearchPlaceholder"] = "Søg efter et sted her", ["ToolbarShowSaved"] = "Vis gemte elementer", ["ToolbarBearingCircle"] = "Retningsværktøj", ["ToolbarRuler"] = "Linealværktøj", ["ToolbarMapScale"] = "Kortskala", ["ProfileDistanceLabel"] = "Samlet afstand", ["ProfileTimeLabel"] = "Tid", ["ProfileElevationLabel"] = "Højdeforskel", ["ProfileSlopeLabel"] = "Gennemsnitlig hældning", ["MapContextAddPin"] = "Tilføj pin", ["MapContextDeleteRoutePoint"] = "Slet rutepunkt", ["MapContextSetEnd"] = "Sæt som slutpunkt", ["MapContextSetStart"] = "Sæt som startpunkt", ["MapContextSetWaypoint"] = "Sæt som waypoint", ["MapContextSetDirectWaypoint"] = "Sæt som direkte waypoint", ["WeatherReferenceTitle"] = "Vejrreferencepunkt", ["MapContextSetWeatherPoint"] = "Sæt som vejrberegningspunkt", ["CivilAlertNone"] = "Ingen SNPC-IT-varsel i ruteområdet.", ["RoutePointsInserted"] = "Rutepunkter indsat" });
         ApplyTranslations("sv-SE", new Dictionary<string, string> { ["MenuFile"] = "Fil", ["MenuSettings"] = "Inställningar", ["SearchButton"] = "Sök", ["SavedPlacesGroup"] = "Sparade objekt", ["MapLegendGroup"] = "Kartlegend", ["MapLegendEmpty"] = "Inga leder synliga i det aktuella området.", ["WeatherGroup"] = "Väder", ["WeatherUpdated"] = "Uppdaterad", ["ToolbarSearch"] = "Sök", ["ToolbarSearchPlaceholder"] = "Sök en plats här", ["ToolbarShowSaved"] = "Visa sparade objekt", ["ToolbarBearingCircle"] = "Riktningsverktyg", ["ToolbarRuler"] = "Linjalsverktyg", ["ToolbarMapScale"] = "Kartskala", ["ProfileDistanceLabel"] = "Total sträcka", ["ProfileTimeLabel"] = "Tid", ["ProfileElevationLabel"] = "Höjdskillnad", ["ProfileSlopeLabel"] = "Genomsnittlig lutning", ["MapContextAddPin"] = "Lägg till pin", ["MapContextDeleteRoutePoint"] = "Ta bort ruttpunkt", ["MapContextSetEnd"] = "Ange som slutpunkt", ["MapContextSetStart"] = "Ange som startpunkt", ["MapContextSetWaypoint"] = "Ange som waypoint", ["MapContextSetDirectWaypoint"] = "Ange som direkt waypoint", ["WeatherReferenceTitle"] = "Väderreferenspunkt", ["MapContextSetWeatherPoint"] = "Ange som väderberäkningspunkt", ["CivilAlertNone"] = "Ingen SNPC-IT-varning i ruttområdet.", ["RoutePointsInserted"] = "Ruttpunkter infogade" });
         ApplyTranslations("fi-FI", new Dictionary<string, string> { ["MenuFile"] = "Tiedosto", ["MenuSettings"] = "Asetukset", ["SearchButton"] = "Hae", ["SavedPlacesGroup"] = "Tallennetut kohteet", ["MapLegendGroup"] = "Kartan selite", ["MapLegendEmpty"] = "Nykyisellä alueella ei näy polkuja.", ["WeatherGroup"] = "Sää", ["WeatherUpdated"] = "Päivitetty", ["ToolbarSearch"] = "Hae", ["ToolbarSearchPlaceholder"] = "Hae paikkaa tästä", ["ToolbarShowSaved"] = "Näytä tallennetut kohteet", ["ToolbarBearingCircle"] = "Suuntaustyökalu", ["ToolbarRuler"] = "Viivaintyökalu", ["ToolbarMapScale"] = "Karttakaava", ["ProfileDistanceLabel"] = "Kokonaismatka", ["ProfileTimeLabel"] = "Aika", ["ProfileElevationLabel"] = "Korkeusero", ["ProfileSlopeLabel"] = "Keskimääräinen kaltevuus", ["MapContextAddPin"] = "Lisää pinni", ["MapContextDeleteRoutePoint"] = "Poista reittipiste", ["MapContextSetEnd"] = "Aseta päätepisteeksi", ["MapContextSetStart"] = "Aseta aloituspisteeksi", ["MapContextSetWaypoint"] = "Aseta välietapiksi", ["MapContextSetDirectWaypoint"] = "Aseta suoraksi välietapiksi", ["WeatherReferenceTitle"] = "Sään viitepiste", ["MapContextSetWeatherPoint"] = "Aseta sään laskentapisteeksi", ["CivilAlertNone"] = "Ei SNPC-IT-hälytystä reitin alueella.", ["RoutePointsInserted"] = "Reittipisteitä lisätty" });
+        ApplyFolderActionTranslations();
+        ApplyTransferTranslations();
+    }
+    private static void ApplyFolderActionTranslations()
+    {
+        ApplyTranslations("fr-FR", new() { ["FolderForceColors"] = "Appliquer les paramètres aux éléments contenus", ["FolderForceColorsConfirm"] = "Enregistrer les paramètres du dossier et supprimer les couleurs personnalisées de tous les repères contenus, y compris dans les sous-dossiers ? Les repères hériteront de la couleur de leur dossier. Les icônes ne seront pas modifiées." });
+        ApplyTranslations("es-ES", new() { ["FolderForceColors"] = "Forzar la configuración en los elementos contenidos", ["FolderForceColorsConfirm"] = "¿Guardar la configuración de la carpeta y eliminar los colores personalizados de todos los marcadores contenidos, incluidas las subcarpetas? Los marcadores heredarán el color de su carpeta. Los iconos no se modificarán." });
+        ApplyTranslations("de-DE", new() { ["FolderForceColors"] = "Einstellungen auf enthaltene Elemente anwenden", ["FolderForceColorsConfirm"] = "Ordnereinstellungen speichern und benutzerdefinierte Farben aller enthaltenen Pins einschließlich der Unterordner entfernen? Die Pins erben die Farbe ihres Ordners. Symbole werden nicht geändert." });
+        ApplyTranslations("nl-NL", new() { ["FolderForceColors"] = "Instellingen toepassen op onderliggende elementen", ["FolderForceColorsConfirm"] = "De mapinstellingen opslaan en aangepaste kleuren van alle pins in deze map en submappen verwijderen? Pins erven de kleur van hun map. Pictogrammen worden niet gewijzigd." });
+        ApplyTranslations("nb-NO", new() { ["FolderForceColors"] = "Bruk innstillingene på innholdet", ["FolderForceColorsConfirm"] = "Lagre mappeinnstillingene og fjerne egendefinerte farger fra alle kartnåler i mappen og undermappene? Kartnålene arver fargen fra mappen sin. Ikonene endres ikke." });
+        ApplyTranslations("da-DK", new() { ["FolderForceColors"] = "Anvend indstillinger på de indeholdte elementer", ["FolderForceColorsConfirm"] = "Gem mappeindstillingerne og fjern brugerdefinerede farver fra alle markører i mappen og undermapperne? Markørerne arver farven fra deres mappe. Ikonerne ændres ikke." });
+        ApplyTranslations("sv-SE", new() { ["FolderForceColors"] = "Tillämpa inställningarna på innehållet", ["FolderForceColorsConfirm"] = "Spara mappinställningarna och ta bort anpassade färger från alla kartnålar i mappen och undermapparna? Kartnålarna ärver färgen från sin mapp. Ikonerna ändras inte." });
+        ApplyTranslations("fi-FI", new() { ["FolderForceColors"] = "Käytä asetuksia kansion kohteisiin", ["FolderForceColorsConfirm"] = "Tallennetaanko kansion asetukset ja poistetaanko mukautetut värit kaikista kansion ja alikansioiden karttamerkeistä? Merkit perivät oman kansionsa värin. Kuvakkeita ei muuteta." });
     }
     private static void ApplyTranslations(string languageCode, Dictionary<string, string> values)
     {
@@ -479,8 +574,8 @@ public sealed class SavedPlace : BindableBase
     private double _longitude;
     private Guid? _folderId;
     private bool _isVisible = true;
-    private string _iconKey = "poi";
-    private string _pinColorHex = DefaultPinColor;
+    private string _iconKey = string.Empty;
+    private string _pinColorHex = string.Empty;
     public Guid Id { get => _id; set => SetProperty(ref _id, value); }
     public string Name { get => _name; set => SetProperty(ref _name, value); }
     public string Description { get => _description; set => SetProperty(ref _description, value); }
@@ -509,11 +604,13 @@ public sealed class SavedFolder : BindableBase
     private string _name = "Nuova cartella";
     private Guid? _parentId;
     private bool _isEnabled = true;
-    private string _pinColorHex = SavedPlace.DefaultPinColor;
+    private string _iconKey = string.Empty;
+    private string _pinColorHex = string.Empty;
     public Guid Id { get => _id; set => SetProperty(ref _id, value); }
     public string Name { get => _name; set => SetProperty(ref _name, value); }
     public Guid? ParentId { get => _parentId; set => SetProperty(ref _parentId, value); }
     public bool IsEnabled { get => _isEnabled; set => SetProperty(ref _isEnabled, value); }
+    public string IconKey { get => _iconKey; set => SetProperty(ref _iconKey, value); }
     public string PinColorHex { get => _pinColorHex; set => SetProperty(ref _pinColorHex, value); }
 }
 public sealed class RoutePoint : BindableBase
@@ -620,195 +717,4 @@ public sealed class PlaceTreeNode : BindableBase
     public bool IsPlace => Place is not null;
     public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }
 }
-public sealed class MainWindowViewModel : BindableBase
-{
-    private SavedPlace? _selectedPlace;
-    private SavedFolder? _selectedFolder;
-    private RoutePoint? _selectedRoutePoint;
-    private SearchResult? _selectedSearchResult;
-    private string _searchQuery = string.Empty;
-    private string _savedPlacesSearchQuery = string.Empty;
-    private string _statusMessage = "Pronto.";
-    private string _selectionModeMessage = string.Empty;
-    private string _routeSummary = "Nessuna traccia calcolata.";
-    private string _profileSummary = "Curve di livello pronte.";
-    private bool _isProfilePaneExpanded;
-    private string _profileLinePoints = string.Empty;
-    private string _profileFillPoints = string.Empty;
-    private string _profileLineGeometry = string.Empty;
-    private string _profileFillGeometry = string.Empty;
-    private string _profileLineGeometryGreen = string.Empty;
-    private string _profileLineGeometryYellow = string.Empty;
-    private string _profileLineGeometryOrange = string.Empty;
-    private string _profileLineGeometryRed = string.Empty;
-    private string _profileMaxLabel = string.Empty;
-    private string _profileUpperMidLabel = string.Empty;
-    private string _profileLowerMidLabel = string.Empty;
-    private string _profileMinLabel = string.Empty;
-    private string _profileStartDistanceLabel = "0 km";
-    private string _profileQuarterDistanceLabel = string.Empty;
-    private string _profileMidDistanceLabel = string.Empty;
-    private string _profileThreeQuarterDistanceLabel = string.Empty;
-    private string _profileEndDistanceLabel = string.Empty;
-    private string _profileDistanceValueText = string.Empty;
-    private string _profileDistanceUnitText = string.Empty;
-    private string _profileDistanceText = string.Empty;
-    private string _profileDurationText = string.Empty;
-    private string _profileHoverText = string.Empty;
-    private string _profileElevationTotalText = string.Empty;
-    private string _profileElevationDetailsText = string.Empty;
-    private string _profileSlopeDetailsText = string.Empty;
-    private string _profileElevationSummaryText = string.Empty;
-    private string _profileGainText = string.Empty;
-    private string _profileLossText = string.Empty;
-    private double _profileChartCanvasWidth = 1180d;
-    private double _profileAxisWidth = 1120d;
-    private string _weatherStatus = string.Empty;
-    private string _weatherLocationLabel = string.Empty;
-    private string _weatherCurrentLabel = string.Empty;
-    private string _weatherUpdatedLabel = string.Empty;
-    private string _civilAlertSummary = string.Empty;
-    public MainWindowViewModel()
-    {
-        Settings.PropertyChanged += (_, _) => RaisePropertyChanged(nameof(Settings));
-    }
-    public LocalizationService L { get; } = new();
-    public AppSettings Settings { get; set; } = new();
-    public ObservableCollection<SavedFolder> Folders { get; } = [];
-    public ObservableCollection<SavedPlace> Places { get; } = [];
-    public ObservableCollection<PlaceTreeNode> PlaceTree { get; } = [];
-    public ObservableCollection<RoutePoint> RoutePoints { get; } = [];
-    public ObservableCollection<SearchResult> SearchResults { get; } = [];
-    public ObservableCollection<RoutePathPoint> RouteGeometry { get; } = [];
-    public ObservableCollection<WeatherForecastDay> WeatherForecast { get; } = [];
-    public ObservableCollection<ProfileColoredSegment> ProfileColoredSegments { get; } = [];
-    public ObservableCollection<ProfileHoverPoint> ProfileHoverPoints { get; } = [];
-    public ObservableCollection<IconOption> AvailableIcons { get; } = [];
-    public ObservableCollection<PinColorOption> AvailablePinColors { get; } = [];
-    public IReadOnlyList<string> AvailableThemes { get; } = ["System", "Light", "Dark"];
-    public IReadOnlyList<string> AvailableLanguages { get; } = ["it-IT", "en-US", "fr-FR", "es-ES", "de-DE", "nl-NL", "nb-NO", "da-DK", "sv-SE", "fi-FI"];
-    public IReadOnlyList<string> AvailableMapStyles { get; } = ["OpenStreetMap", "OpenTopoMap", "CyclOSM", "Humanitarian", "OSM DE"];
-    public IReadOnlyList<string> AvailableUnitPresets { get; } = ["Metric", "Imperial", "Custom"];
-    public IReadOnlyList<string> AvailableDistanceUnits { get; } = ["km", "mi", "m", "ft"];
-    public IReadOnlyList<string> AvailableAltitudeUnits { get; } = ["m", "ft"];
-    public IReadOnlyList<string> AvailableSpeedUnits { get; } = ["km/h", "mph", "m/s"];
-    public IReadOnlyList<string> AvailablePressureUnits { get; } = ["hPa", "mbar", "mmHg", "inHg"];
-    public IReadOnlyList<string> AvailableTemperatureUnits { get; } = ["C", "F"];
-    public IReadOnlyList<string> AvailableRoutePointTypes { get; } = ["Start", "Waypoint", "DirectWaypoint", "End"];
-    public SavedPlace? SelectedPlace { get => _selectedPlace; set { if (SetProperty(ref _selectedPlace, value)) RaisePropertyChanged(nameof(HasSelectedPlace)); } }
-    public SavedFolder? SelectedFolder { get => _selectedFolder; set => SetProperty(ref _selectedFolder, value); }
-    public RoutePoint? SelectedRoutePoint { get => _selectedRoutePoint; set => SetProperty(ref _selectedRoutePoint, value); }
-    public SearchResult? SelectedSearchResult { get => _selectedSearchResult; set => SetProperty(ref _selectedSearchResult, value); }
-    public string SearchQuery { get => _searchQuery; set => SetProperty(ref _searchQuery, value); }
-    public string SavedPlacesSearchQuery { get => _savedPlacesSearchQuery; set => SetProperty(ref _savedPlacesSearchQuery, value); }
-    public string StatusMessage { get => _statusMessage; set => SetProperty(ref _statusMessage, value); }
-    public string SelectionModeMessage { get => _selectionModeMessage; set => SetProperty(ref _selectionModeMessage, value); }
-    public string RouteSummary { get => _routeSummary; set => SetProperty(ref _routeSummary, value); }
-    public string ProfileSummary { get => _profileSummary; set => SetProperty(ref _profileSummary, value); }
-    public bool IsProfilePaneExpanded { get => _isProfilePaneExpanded; set => SetProperty(ref _isProfilePaneExpanded, value); }
-    public string ProfileLinePoints { get => _profileLinePoints; set => SetProperty(ref _profileLinePoints, value); }
-    public string ProfileFillPoints { get => _profileFillPoints; set => SetProperty(ref _profileFillPoints, value); }
-    public string ProfileLineGeometry { get => _profileLineGeometry; set => SetProperty(ref _profileLineGeometry, value); }
-    public string ProfileFillGeometry { get => _profileFillGeometry; set => SetProperty(ref _profileFillGeometry, value); }
-    public string ProfileLineGeometryGreen { get => _profileLineGeometryGreen; set => SetProperty(ref _profileLineGeometryGreen, value); }
-    public string ProfileLineGeometryYellow { get => _profileLineGeometryYellow; set => SetProperty(ref _profileLineGeometryYellow, value); }
-    public string ProfileLineGeometryOrange { get => _profileLineGeometryOrange; set => SetProperty(ref _profileLineGeometryOrange, value); }
-    public string ProfileLineGeometryRed { get => _profileLineGeometryRed; set => SetProperty(ref _profileLineGeometryRed, value); }
-    public string ProfileMaxLabel { get => _profileMaxLabel; set => SetProperty(ref _profileMaxLabel, value); }
-    public string ProfileUpperMidLabel { get => _profileUpperMidLabel; set => SetProperty(ref _profileUpperMidLabel, value); }
-    public string ProfileLowerMidLabel { get => _profileLowerMidLabel; set => SetProperty(ref _profileLowerMidLabel, value); }
-    public string ProfileMinLabel { get => _profileMinLabel; set => SetProperty(ref _profileMinLabel, value); }
-    public string ProfileStartDistanceLabel { get => _profileStartDistanceLabel; set => SetProperty(ref _profileStartDistanceLabel, value); }
-    public string ProfileQuarterDistanceLabel { get => _profileQuarterDistanceLabel; set => SetProperty(ref _profileQuarterDistanceLabel, value); }
-    public string ProfileMidDistanceLabel { get => _profileMidDistanceLabel; set => SetProperty(ref _profileMidDistanceLabel, value); }
-    public string ProfileThreeQuarterDistanceLabel { get => _profileThreeQuarterDistanceLabel; set => SetProperty(ref _profileThreeQuarterDistanceLabel, value); }
-    public string ProfileEndDistanceLabel { get => _profileEndDistanceLabel; set => SetProperty(ref _profileEndDistanceLabel, value); }
-    public string ProfileDistanceValueText { get => _profileDistanceValueText; set => SetProperty(ref _profileDistanceValueText, value); }
-    public string ProfileDistanceUnitText { get => _profileDistanceUnitText; set => SetProperty(ref _profileDistanceUnitText, value); }
-    public string ProfileDistanceText { get => _profileDistanceText; set => SetProperty(ref _profileDistanceText, value); }
-    public string ProfileDurationText { get => _profileDurationText; set => SetProperty(ref _profileDurationText, value); }
-    public string ProfileHoverText { get => _profileHoverText; set => SetProperty(ref _profileHoverText, value); }
-    public string ProfileElevationTotalText { get => _profileElevationTotalText; set => SetProperty(ref _profileElevationTotalText, value); }
-    public string ProfileElevationDetailsText { get => _profileElevationDetailsText; set => SetProperty(ref _profileElevationDetailsText, value); }
-    public string ProfileSlopeDetailsText { get => _profileSlopeDetailsText; set => SetProperty(ref _profileSlopeDetailsText, value); }
-    public string ProfileElevationSummaryText { get => _profileElevationSummaryText; set => SetProperty(ref _profileElevationSummaryText, value); }
-    public string ProfileGainText { get => _profileGainText; set => SetProperty(ref _profileGainText, value); }
-    public string ProfileLossText { get => _profileLossText; set => SetProperty(ref _profileLossText, value); }
-    public double ProfileChartCanvasWidth { get => _profileChartCanvasWidth; set => SetProperty(ref _profileChartCanvasWidth, value); }
-    public double ProfileAxisWidth { get => _profileAxisWidth; set => SetProperty(ref _profileAxisWidth, value); }
-    public string WeatherStatus { get => _weatherStatus; set => SetProperty(ref _weatherStatus, value); }
-    public string WeatherLocationLabel { get => _weatherLocationLabel; set => SetProperty(ref _weatherLocationLabel, value); }
-    public string WeatherCurrentLabel { get => _weatherCurrentLabel; set => SetProperty(ref _weatherCurrentLabel, value); }
-    public string WeatherUpdatedLabel { get => _weatherUpdatedLabel; set => SetProperty(ref _weatherUpdatedLabel, value); }
-    public string CivilAlertSummary { get => _civilAlertSummary; set => SetProperty(ref _civilAlertSummary, value); }
-    public bool HasSelectedPlace => SelectedPlace is not null;
-    public void UpdateIconOptions(string languageCode)
-    {
-        var names = languageCode == "en-US"
-            ? new Dictionary<string, string>
-            {
-                ["bivouac"] = "Bivouac",
-                ["fountain"] = "Fountain",
-                ["food"] = "Food",
-                ["paid_hut"] = "Paid hut",
-                ["single_tent"] = "Single tent",
-                ["tent_area"] = "Tent area",
-                ["parking"] = "Parking",
-                ["cable_car"] = "Cable car",
-                ["hammocks"] = "Hammock area",
-                ["waterfall"] = "Waterfall",
-                ["poi"] = "POI",
-                ["water"] = "River or lake",
-                ["summit_cross"] = "Summit cross"
-            }
-            : new Dictionary<string, string>
-            {
-                ["bivouac"] = "Bivacco",
-                ["fountain"] = "Fontana",
-                ["food"] = "Ristoro",
-                ["paid_hut"] = "Rifugio a pagamento",
-                ["single_tent"] = "Spazio tenda singola",
-                ["tent_area"] = "Spazio tende",
-                ["parking"] = "Parcheggio",
-                ["cable_car"] = "Funivia",
-                ["hammocks"] = "Spazio amache",
-                ["waterfall"] = "Cascate",
-                ["poi"] = "POI",
-                ["water"] = "Fiume o lago",
-                ["summit_cross"] = "Croce di vetta"
-            };
-        AvailableIcons.Clear();
-        foreach (var pair in names)
-        {
-            AvailableIcons.Add(new IconOption { Key = pair.Key, DisplayName = pair.Value });
-        }
-        var colorNames = languageCode == "en-US"
-            ? new Dictionary<string, string>
-            {
-                ["#2E7D5B"] = "Green",
-                ["#D65A5A"] = "Red",
-                ["#3F6F8F"] = "Blue",
-                ["#D9824B"] = "Orange",
-                ["#8B6B4A"] = "Brown",
-                ["#7657A8"] = "Purple",
-                ["#C49A3A"] = "Yellow",
-                ["#59636E"] = "Gray"
-            }
-            : new Dictionary<string, string>
-            {
-                ["#2E7D5B"] = "Verde",
-                ["#D65A5A"] = "Rosso",
-                ["#3F6F8F"] = "Blu",
-                ["#D9824B"] = "Arancione",
-                ["#8B6B4A"] = "Marrone",
-                ["#7657A8"] = "Viola",
-                ["#C49A3A"] = "Giallo",
-                ["#59636E"] = "Grigio"
-            };
-        AvailablePinColors.Clear();
-        foreach (var pair in colorNames)
-        {
-            AvailablePinColors.Add(new PinColorOption { Hex = pair.Key, DisplayName = pair.Value });
-        }
-    }
-}
+
