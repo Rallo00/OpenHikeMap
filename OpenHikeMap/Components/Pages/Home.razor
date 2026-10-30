@@ -61,7 +61,7 @@
                 {
                     @if (entry.Folder is { } folder)
                     {
-                        <div class="tree-row folder-row" style="--tree-depth:@entry.Depth" @oncontextmenu:preventDefault @oncontextmenu="() => OpenFolderEditor(folder)"><button class="tree-toggle" aria-label="@(IsFolderCollapsed(folder) ? "Espandi cartella" : "Comprimi cartella")" aria-expanded="@(!IsFolderCollapsed(folder))" disabled="@(!FolderHasChildren(folder))" @onclick="() => ToggleFolder(folder)">@(IsFolderCollapsed(folder) ? "▸" : "▾")</button><input type="checkbox" aria-label="Visibilità cartella" @bind="folder.IsEnabled" @bind:after="Refresh" /><button class="text-button tree-folder-name" @onclick="() => SelectFolder(folder)">@folder.Name</button></div>
+                        <div class="tree-row folder-row" style="--tree-depth:@entry.Depth" @oncontextmenu:preventDefault @oncontextmenu="() => OpenFolderEditor(folder)"><button class="tree-toggle" aria-label="@(IsFolderCollapsed(folder) ? "Espandi cartella" : "Comprimi cartella")" aria-expanded="@(!IsFolderCollapsed(folder))" disabled="@(!FolderHasChildren(folder))" @onclick="() => ToggleFolder(folder)">@(IsFolderCollapsed(folder) ? "▸" : "▾")</button><input type="checkbox" aria-label="Visibilità cartella" @bind="folder.IsEnabled" @bind:after="Refresh" /><button class="text-button tree-folder-name" @onclick="() => SelectFolder(folder)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder preview-icon" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>@folder.Name</span></button></div>
                     }
                     else if (entry.Place is { } place)
                     {
@@ -88,7 +88,7 @@
         </section>
         <aside class="details panel">
             <div class="section-kicker">@L["PlanKicker"]</div><h2>@L["RightPaneHeader"]</h2>
-            <section><div class="section-title"><h3>@L["RoutePlanningGroup"]</h3><button @onclick='() => OpenCoordinates("route")'>+</button></div>
+            <section class="route-planning"><div class="section-title"><h3>@L["RoutePlanningGroup"]</h3><button @onclick='() => OpenCoordinates("route")'>+</button></div>
                 @if (Data.RoutePoints.Count == 0) { <p class="subtle">@L["RouteEmpty"]</p> }
                 @for (var i = 0; i < Data.RoutePoints.Count; i++)
                 {
@@ -126,12 +126,12 @@
         @if (Dialog == 'e')
         {
             <h2>@L["ExportTitle"]</h2><p>@L["ExportIntro"]</p>
-            <div class="file-grid"><button disabled="@(Busy || IsRouting || Data.RoutePoints.Count == 0)" @onclick='() => Export("session")'>@L["ExportRouteAction"]</button><button disabled="@(Busy || IsRouting || Data.RoutePoints.Count == 0)" @onclick='() => Export("gpx")'>@L["ExportGpxAction"]</button><button disabled="@Busy" @onclick='() => Export("backup")'>@L["ExportBackupAction"]</button></div>
+            <div class="file-grid"><button disabled="@(Busy || IsRouting || Data.RoutePoints.Count == 0)" @onclick='() => Export("session")'>@L["ExportRouteAction"]</button><button disabled="@(Busy || IsRouting || Data.RoutePoints.Count == 0)" @onclick='() => Export("gpx")'>@L["ExportGpxAction"]</button><button disabled="@(Busy || IsRouting || Data.RoutePoints.Count == 0)" @onclick='() => Export("kml")'>@L["ExportKmlAction"]</button><button disabled="@(Busy || IsRouting || Data.RoutePoints.Count == 0)" @onclick='() => Export("kmz")'>@L["ExportKmzAction"]</button><button disabled="@Busy" @onclick='() => Export("backup")'>@L["ExportBackupAction"]</button></div>
         }
         else if (Dialog == 'i')
         {
             <h2>@L["ImportTitle"]</h2><p>@L["ImportIntro"]</p>
-            <label class="upload">@L["ImportFileLabel"]<InputFile id="transfer-upload" OnChange="Import" accept=".gpx,.ohk,.json" disabled="@Busy" aria-label="@L["ImportFileLabel"]" /></label>
+            <label class="upload">@L["ImportFileLabel"]<InputFile id="transfer-upload" OnChange="Import" accept=".gpx,.kml,.kmz,.ohk,.json" disabled="@Busy" aria-label="@L["ImportFileLabel"]" /></label>
         }
         else if (Dialog == 's')
         {

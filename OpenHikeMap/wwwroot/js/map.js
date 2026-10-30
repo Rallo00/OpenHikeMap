@@ -297,8 +297,8 @@ export function openPlaceContext(id) {
 }
 export function getCenter() { const center = map?.getCenter(); return center ? [center.lat, center.lng] : [0, 0]; }
 export function fit(path) { if (map && path.length) { const bounds = visibleMapBounds(); map.fitBounds(L.latLngBounds(path.map(p => [p.latitude, p.longitude])), { paddingTopLeft: [bounds.left + 25, 25], paddingBottomRight: [map.getSize().x - bounds.right + 25, bounds.bottom + 25], maxZoom: 15 }); } }
-export function download(filename, text, mime) {
-    const url = URL.createObjectURL(new Blob([text], { type: mime + ';charset=utf-8' }));
+export function download(filename, content, mime) {
+    const url = URL.createObjectURL(new Blob([content], { type: typeof content === 'string' ? mime + ';charset=utf-8' : mime }));
     const link = document.createElement('a'); link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function dispose() {

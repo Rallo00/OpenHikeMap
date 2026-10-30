@@ -482,14 +482,15 @@ public partial class Home
     private async Task Export(string kind) => await Run(async () =>
     {
         Data.Validate();
-        object content = kind switch
+        var (content, extension, mime) = kind switch
         {
-            "backup" => TransferService.BuildBackup(Data),
-            _ => TransferService.BuildRoute(Data)
+            "gpx" => ((object)Gpx.BuildGpx(Data.RoutePoints, Path), "gpx", "application/gpx+xml"),
+            "kml" => ((object)RouteKmlService.BuildKml(Data.RoutePoints, Path), "kml", "application/vnd.google-earth.kml+xml"),
+            "kmz" => ((object)RouteKmlService.BuildKmz(Data.RoutePoints, Path), "kmz", "application/vnd.google-earth.kmz"),
+            "backup" => ((object)JsonSerializer.Serialize(TransferService.BuildBackup(Data), Json), "ohmbackup.json", "application/json"),
+            _ => ((object)JsonSerializer.Serialize(TransferService.BuildRoute(Data), Json), "ohk", "application/json")
         };
-        var text = kind == "gpx" ? Gpx.BuildGpx(Data.RoutePoints, Path) : JsonSerializer.Serialize(content, Json);
-        var extension = kind switch { "gpx" => "gpx", "backup" => "ohmbackup.json", _ => "ohk" };
-        await Module!.InvokeVoidAsync("download", $"openhikemap-{kind}.{extension}", text, kind == "gpx" ? "application/xml" : "application/json");
+        await Module!.InvokeVoidAsync("download", $"openhikemap-{kind}.{extension}", content, mime);
         Status = L["ExportDone"];
     });
     private async Task Import(InputFileChangeEventArgs e) => await Run(async () =>

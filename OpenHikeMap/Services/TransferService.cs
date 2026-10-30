@@ -29,12 +29,12 @@ public static class TransferService
         var candidate = JsonSerializer.Deserialize<WebSession>(JsonSerializer.Serialize(current, Json), Json)!;
         var extension = Path.GetExtension(filename).ToLowerInvariant();
         var kind = ImportKind.Route;
-        if (extension == ".gpx")
+        if (extension is ".gpx" or ".kml" or ".kmz")
         {
-            var route = gpx.ImportGpx(input);
+            var route = extension == ".gpx" ? gpx.ImportGpx(input) : RouteKmlService.Import(input, extension == ".kmz");
             if (route.RoutePoints.Count > 1) { route.RoutePoints[0].PointType = "Start"; route.RoutePoints[^1].PointType = "End"; }
             candidate.RoutePoints = route.RoutePoints; candidate.RouteGeometry = route.RouteGeometry;
-            candidate.RouteKind = route.RouteGeometry.Count > 0 ? "Traccia GPX importata" : "Bozza diretta";
+            candidate.RouteKind = route.RouteGeometry.Count > 0 ? $"Traccia {extension[1..].ToUpperInvariant()} importata" : "Bozza diretta";
             candidate.Settings.WeatherReferenceLatitude = null; candidate.Settings.WeatherReferenceLongitude = null;
         }
         else if (extension is ".ohk" or ".json")

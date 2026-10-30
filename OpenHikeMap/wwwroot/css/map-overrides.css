@@ -12,6 +12,12 @@
 @media(prefers-color-scheme:dark){[data-theme=system]{--popup-bg:#263229;--popup-text:#edf3ee;--popup-button:#314035;--popup-hover:#47634e;--popup-border:#526357}[data-theme=system] .library,[data-theme=system] .details{background:rgba(38,50,41,.95);border-color:#495446}}
 @media(prefers-color-scheme:dark){[data-theme=system]{--search-bg:#26382c;--search-muted:#b4c0ac;--weather-text:#edf3f6;--weather-border:#52636a;--weather-base-from:#304b5b;--weather-base-to:#263e4b;--weather-sun-from:#285771;--weather-sun-to:#20475e;--weather-rain-from:#354b5c;--weather-rain-to:#2b3e50;--weather-rain-wind-from:#304558;--weather-rain-wind-to:#27394b;--weather-snow-from:#45545e;--weather-snow-to:#374650;--weather-fog-from:#474f53;--weather-fog-to:#394246;--weather-windy-from:#3b505b;--weather-windy-to:#2f414c;--weather-storm-from:#49445e;--weather-storm-to:#39364c}}
 .app-shell .map-pin img{background:transparent;border-radius:0}
+.app-shell .saved-tree .tree-row,.app-shell .saved-tree button{background:transparent}
+.folder-row .tree-folder-name{display:flex;align-items:center;gap:6px}
+.tree-folder-name svg{width:16px;height:16px;flex-shrink:0}
+.tree-folder-name span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.saved-tree .tree-row{border:0}
+.route-planning .stop-card,.details .weather{border-bottom:0}
 .header-search-results{background:var(--search-bg);color:var(--popup-text);border-color:var(--popup-border)}
 .header-search-results .search-result,.header-search-results .text-button{background:transparent;color:var(--popup-text)}
 .header-search-results small{color:var(--search-muted)}
