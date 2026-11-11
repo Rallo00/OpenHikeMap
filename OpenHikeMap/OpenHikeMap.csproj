@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>OpenHikeMap</AssemblyName>
+    <RootNamespace>OpenHikeMap</RootNamespace>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+    <UserSecretsId>OpenHikeMapWeb-7f70dd1f-4b06-4b80-9fae-df0916b0da5c</UserSecretsId>
+    <Version>0.94.0</Version>
+    <!-- Version is the single source for executable metadata, splash screen and update checks. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Title>OpenHikeMap</Title>
+    <Product>OpenHikeMap</Product>
+    <Description>OpenHikeMap standalone hiking planner.</Description>
+    <ApplicationIcon>Assets\OpenHikeMap.ico</ApplicationIcon>
+    <DebugType>embedded</DebugType>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3065.39" />
+    <Resource Include="Assets\OpenHikeMap.ico" />
+    <Content Update="wwwroot\**" CopyToPublishDirectory="Never" />
+    <Using Include="System.IO" />
+    <Using Include="System.Net.Http" />
+    <Using Include="System.Net.Http.Json" />
+    <Using Include="Microsoft.AspNetCore.Builder" />
+    <Using Include="Microsoft.AspNetCore.Hosting" />
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.Extensions.Configuration" />
+    <Using Include="Microsoft.Extensions.DependencyInjection" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+  <Target Name="EmbedWebAssets" BeforeTargets="AssignTargetPaths" Condition="'$(DesignTimeBuild)' != 'true'">
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <ZipDirectory SourceDirectory="wwwroot" DestinationFile="$(IntermediateOutputPath)web-assets.zip" Overwrite="true" />
+    <Error Condition="!Exists('$(BlazorFrameworkStaticWebAssetRoot)\blazor.web.js')" Text="Blazor startup script is missing. Restore the project's .NET framework assets." />
+    <ItemGroup>
+      <EmbeddedResource Include="$(IntermediateOutputPath)web-assets.zip" LogicalName="OpenHikeMap.assets.zip" />
+      <EmbeddedResource Include="$(BlazorFrameworkStaticWebAssetRoot)\blazor.web.js" LogicalName="OpenHikeMap.blazor.web.js" />
+    </ItemGroup>
+  </Target>
+  <Target Name="IncludeSingleFileContent" BeforeTargets="_ComputeFilesToBundle">
+    <ItemGroup><ResolvedFileToPublish Update="@(ResolvedFileToPublish)" ExcludeFromSingleFile="false" /></ItemGroup>
+  </Target>
+</Project>

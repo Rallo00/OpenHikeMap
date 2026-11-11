@@ -1,0 +1,74 @@
+using OpenHikeMap.Components;
+using OpenHikeMap.Services;
+using System.Text.Json;
+
+namespace OpenHikeMap;
+
+public static class WebApplicationHost
+{
+    public static WebApplication Create(string contentRoot, int port = 5186)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            Args = [], ApplicationName = typeof(WebApplicationHost).Assembly.GetName().Name,
+            ContentRootPath = contentRoot, WebRootPath = Path.Combine(contentRoot, "wwwroot"),
+            EnvironmentName = Environments.Production
+        });
+        builder.Configuration.AddUserSecrets(typeof(WebApplicationHost).Assembly, optional: true);
+        builder.Logging.ClearProviders();
+        builder.Services.Configure<HostOptions>(options => options.ShutdownTimeout = TimeSpan.FromSeconds(1));
+        builder.Configuration["AllowedHosts"] = "127.0.0.1;localhost";
+        builder.WebHost.ConfigureKestrel(options => options.Listen(System.Net.IPAddress.Loopback, port));
+        builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+        builder.Services.AddHttpClient<SearchService>(c => c.Timeout = TimeSpan.FromSeconds(30));
+        builder.Services.AddHttpClient<RoutingService>(c => c.Timeout = TimeSpan.FromSeconds(45));
+        builder.Services.AddHttpClient<ElevationService>();
+        builder.Services.AddHttpClient<WeatherService>(c => c.Timeout = TimeSpan.FromSeconds(20));
+        builder.Services.AddHttpClient("CivilProtection", c => { c.Timeout = TimeSpan.FromSeconds(30); c.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent); });
+        builder.Services.AddSingleton(sp => new CivilProtectionService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("CivilProtection")));
+        builder.Services.AddSingleton<OsmTileService>();
+        builder.Services.AddSingleton<AppSettingsStore>();
+        builder.Services.AddHttpClient("OpenCam", c => c.Timeout = TimeSpan.FromSeconds(15));
+        builder.Services.AddSingleton(sp => new OpenCamService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("OpenCam")));
+        builder.Services.AddHttpClient("OsmTiles", c => { c.Timeout = TimeSpan.FromSeconds(20); c.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent); });
+        builder.Services.AddScoped<GpxService>();
+        var app = builder.Build();
+        app.UseExceptionHandler("/error");
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path == "/") context.Response.Headers.CacheControl = "no-store";
+            await next(context);
+        });
+        app.UseAntiforgery();
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache"
+        });
+        app.MapGet("/tiles/osm/{z:int}/{x:int}/{y:int}.png", async (int z, int x, int y, OsmTileService tiles, HttpContext context) =>
+        {
+            if (z is < 0 or > 19 || x < 0 || y < 0 || x >= 1 << z || y >= 1 << z) return Results.BadRequest();
+            try
+            {
+                var tile = await tiles.GetAsync(z, x, y, context.RequestAborted);
+                var maxAge = Math.Max(0, (int)(tile.Expires - DateTimeOffset.UtcNow).TotalSeconds);
+                context.Response.Headers.CacheControl = tile.Cacheable ? $"public,max-age={maxAge}" : "no-store";
+                return Results.File(tile.Bytes, "image/png", lastModified: tile.LastModified, entityTag: tile.ETag is { } tag ? Microsoft.Net.Http.Headers.EntityTagHeaderValue.Parse(tag) : null);
+            }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested || app.Lifetime.ApplicationStopping.IsCancellationRequested) { return Results.Empty; }
+            catch (OperationCanceledException) { context.Response.Headers.CacheControl = "no-store"; return Results.StatusCode(StatusCodes.Status504GatewayTimeout); }
+            catch (HttpRequestException ex) { context.Response.Headers.CacheControl = "no-store"; return Results.StatusCode(ex.StatusCode is { } status ? (int)status : StatusCodes.Status502BadGateway); }
+        });
+        app.MapGet("/webcams", async (double west, double south, double east, double north, OpenCamService webcams, HttpContext context) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            if (!OpenCamService.ValidBounds(west, south, east, north)) return Results.BadRequest();
+            using var stopping = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, app.Lifetime.ApplicationStopping);
+            try { return Results.Ok(await webcams.GetAsync(west, south, east, north, stopping.Token)); }
+            catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested || app.Lifetime.ApplicationStopping.IsCancellationRequested) { return Results.Empty; }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or JsonException or InvalidDataException)
+            { return Results.StatusCode(StatusCodes.Status503ServiceUnavailable); }
+        });
+        app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+        return app;
+    }
+}
