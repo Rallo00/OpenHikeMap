@@ -28,13 +28,8 @@ I then started to use AI to build a Windows application that suited my needs, an
 - KML import and export for Google Earth;
 
 <img width="1386" height="1014" alt="image" src="https://github.com/user-attachments/assets/cacce7df-a01a-4e11-bdb8-823d4db0d7bc" />
-
 <img width="639" height="559" alt="image" src="https://github.com/user-attachments/assets/9ed390bb-41d5-4dbf-aec1-25ee2a0c8418" />
-
 <img width="552" height="466" alt="image" src="https://github.com/user-attachments/assets/cb7be187-0c21-4a01-aacf-9a7b6f927f11" />
-
 <img width="451" height="394" alt="image" src="https://github.com/user-attachments/assets/f62e0210-b376-49ff-aa5f-cad8f8bfaa88" />
-
 <img width="495" height="369" alt="image" src="https://github.com/user-attachments/assets/a3ece847-5b1c-4897-be24-73ce7cbe5e8b" />
-
-
+<img width="400" height="411" alt="image" src="https://github.com/user-attachments/assets/4c58316c-2699-462f-81c2-b6de33e6234c" />
