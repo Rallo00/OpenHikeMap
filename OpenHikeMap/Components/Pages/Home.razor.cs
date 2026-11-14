@@ -161,7 +161,11 @@ public partial class Home
         if (!StorageWritable) { Status = "Salvataggio sospeso: i dati locali precedenti non sono stati sovrascritti."; return; }
         var route = new { Data.RoutePoints, Data.RouteGeometry, Data.RouteKind, Settings = new { Data.Settings.WeatherReferenceLatitude, Data.Settings.WeatherReferenceLongitude } };
         var ok = await Module.InvokeAsync<bool>("writeRouteStorage", JsonSerializer.Serialize(route, Json));
-        if (!ok) Status = "Spazio browser insufficiente o archiviazione disabilitata: esporta la sessione per conservarla.";
+        if (!ok)
+        {
+            Status = "Spazio browser insufficiente o archiviazione disabilitata: esporta la sessione per conservarla.";
+            if (Dialog == 's') SettingsFeedbackKey = "SaveError";
+        }
     }
     private async Task RenderMap()
     {
@@ -367,7 +371,7 @@ public partial class Home
     private void OpenCoordinates(string target) { CoordinateTarget = target; CoordinateLat = Data.Settings.DefaultLatitude; CoordinateLon = Data.Settings.DefaultLongitude; CoordinateName = target == "pin" ? "Nuovo luogo" : "Tappa"; Dialog = 'c'; }
     private async Task AddCoordinates()
     {
-        if (!WebSession.CoordinatesValid(CoordinateLat, CoordinateLon)) { Status = "Latitudine tra −90 e 90, longitudine tra −180 e 180."; return; }
+        if (!WebSession.CoordinatesValid(CoordinateLat, CoordinateLon)) { Status = "Latitudine tra âˆ’90 e 90, longitudine tra âˆ’180 e 180."; return; }
         if (CoordinateTarget == "pin") await AddPin(CoordinateLat, CoordinateLon, CoordinateName); else await AddStop(CoordinateLat, CoordinateLon, CoordinateName);
         await Center(CoordinateLat, CoordinateLon); Dialog = '\0';
     }
@@ -463,25 +467,30 @@ public partial class Home
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             Status = L["SettingsDiskSaveFailed"];
+            if (Dialog == 's') SettingsFeedbackKey = "SaveError";
             Logger.LogWarning("Cannot save application settings: {Reason}", ex.Message);
         }
     }
     private async Task OpenSettings()
     {
         await LoadDiskSettings();
+        SettingsTab = "general"; ShowApiKey = false; SettingsFeedbackKey = ""; ApiKeyStatusKey = "";
+        try { ApiKeyDraft = OpenRouteServiceCredentials.Load(Configuration); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { ApiKeyDraft = ""; ApiKeyStatusKey = "ApiError"; }
         L.SetLanguage(Data.Settings.LanguageCode); SearchOpen = false; Dialog = 's';
         await ApplySettings();
     }
-    private async Task AutoSaveSettings() => await Run(Save);
+    private async Task AutoSaveSettings() => await ChangeSettingsPreferences(Save);
     private async Task SaveSettings()
     {
-        try { Data.Validate(); } catch (InvalidDataException e) { Status = e.Message; return; }
+        try { Data.Validate(); } catch (InvalidDataException) { SettingsFeedbackKey = "Invalid"; return; }
         if (!DiskSettingsWritable)
         {
             if (!await JS.InvokeAsync<bool>("confirm", L["SettingsDiskReplaceConfirm"])) return;
             DiskSettingsWritable = true;
         }
-        await ApplySettings(); Dialog = '\0';
+        await ApplySettingsPreferences();
+        if (string.IsNullOrEmpty(SettingsFeedbackKey)) Dialog = '\0';
     }
     private async Task Export(string kind) => await Run(async () =>
     {
@@ -491,7 +500,7 @@ public partial class Home
             "gpx" => ((object)Gpx.BuildGpx(Data.RoutePoints, Path), "gpx", "application/gpx+xml"),
             "kml" => ((object)RouteKmlService.BuildKml(Data.RoutePoints, Path), "kml", "application/vnd.google-earth.kml+xml"),
             "kmz" => ((object)RouteKmlService.BuildKmz(Data.RoutePoints, Path), "kmz", "application/vnd.google-earth.kmz"),
-            "backup" => ((object)JsonSerializer.Serialize(TransferService.BuildBackup(Data), Json), "ohmbackup.json", "application/json"),
+            "backup" => ((object)FullBackupService.Serialize(Data), "ohmbackup.json", "application/json"),
             _ => ((object)JsonSerializer.Serialize(TransferService.BuildRoute(Data), Json), "ohk", "application/json")
         };
         await Module!.InvokeVoidAsync("download", $"openhikemap-{kind}.{extension}", content, mime);
@@ -505,11 +514,11 @@ public partial class Home
         try { plan = TransferService.Parse(e.File.Name, stream, Data, Gpx); }
         catch (ImportFormatException ex) { throw new InvalidDataException(L[ex.Message]); }
         catch (Exception ex) when (ex is JsonException or System.Xml.XmlException or InvalidDataException) { throw new InvalidDataException(L["ImportUnsupported"]); }
-        if (!await JS.InvokeAsync<bool>("confirm", L[plan.Kind == ImportKind.Backup ? "ImportBackupConfirm" : "ImportRouteConfirm"])) return;
+        if (!await JS.InvokeAsync<bool>("confirm", (plan.Kind == ImportKind.FullBackup ? S("RestoreConfirm") : L[plan.Kind == ImportKind.Backup ? "ImportBackupConfirm" : "ImportRouteConfirm"]))) return;
         if (!StorageWritable && !await JS.InvokeAsync<bool>("confirm", L["ImportStorageConfirm"])) return;
         RouteCalculation?.Cancel(); RouteCalculation = null; IsRouting = false; RouteError = "";
         WeatherRequest?.Cancel(); AlertsRequest?.Cancel();
-        Data = plan.Data; StorageWritable = true; if (plan.Kind == ImportKind.Backup) { DiskSettingsWritable = true; CollapsedFolders.Clear(); }
+        Data = plan.Data; StorageWritable = true; if (plan.Kind != ImportKind.Route) { DiskSettingsWritable = true; CollapsedFolders.Clear(); }
         L.SetLanguage(Data.Settings.LanguageCode); SelectedPlace = null; SelectedFolder = null; Forecast = null;
         AutomaticWeatherPoint = RouteMidpoint.Find(Data.RouteGeometry);
         await Save(); await RenderMap(); if (Path.Count > 0) await FitRoute(); else await Center(Data.Settings.DefaultLatitude, Data.Settings.DefaultLongitude); Dialog = '\0'; Status = L["ImportDone"];

@@ -82,12 +82,13 @@ public sealed class SearchService
 public sealed class RoutingService
 {
     private readonly HttpClient _httpClient;
-    private readonly string _openRouteServiceApiKey;
+    private readonly IConfiguration _configuration;
+
     public RoutingService(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent);
-        _openRouteServiceApiKey = OpenRouteServiceCredentials.Load(configuration);
+        _configuration = configuration;
     }
     public async Task<List<RoutePathPoint>> BuildRouteAsync(IReadOnlyList<RoutePoint> points, CancellationToken cancellationToken = default)
     {
@@ -114,13 +115,14 @@ public sealed class RoutingService
     }
     private async Task<List<RoutePathPoint>> TryBuildWalkingSegmentAsync(RoutePoint from, RoutePoint to, CancellationToken cancellationToken)
     {
+        var _openRouteServiceApiKey = OpenRouteServiceCredentials.Load(_configuration);
         if (string.IsNullOrWhiteSpace(_openRouteServiceApiKey))
             throw new InvalidDataException("OpenRouteService: chiave API non configurata sul server.");
         try
         {
             if (!string.IsNullOrWhiteSpace(_openRouteServiceApiKey))
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openrouteservice.org/v2/directions/foot-hiking/geojson");
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.heigit.org/openrouteservice/v2/directions/foot-hiking/geojson");
                 request.Headers.TryAddWithoutValidation("Authorization", _openRouteServiceApiKey);
                 request.Headers.Accept.ParseAdd("application/geo+json, application/json");
                 request.Content = new StringContent(
@@ -241,15 +243,17 @@ public sealed class RoutingService
 public sealed class ElevationService
 {
     private readonly HttpClient _httpClient;
-    private readonly string _openRouteServiceApiKey;
+    private readonly IConfiguration _configuration;
+
     public ElevationService(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent);
-        _openRouteServiceApiKey = OpenRouteServiceCredentials.Load(configuration);
+        _configuration = configuration;
     }
     public async Task<List<RouteElevationPoint>> GetElevationProfileAsync(IReadOnlyList<RoutePathPoint> path, CancellationToken cancellationToken = default)
     {
+        var _openRouteServiceApiKey = OpenRouteServiceCredentials.Load(_configuration);
         if (path.Count < 2 || string.IsNullOrWhiteSpace(_openRouteServiceApiKey))
         {
             return [];
@@ -266,7 +270,7 @@ public sealed class ElevationService
                     coordinates = path.Select(point => new[] { point.Longitude, point.Latitude }).ToArray()
                 }
             };
-            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openrouteservice.org/elevation/line");
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.heigit.org/openelevationservice/v0/line");
             request.Headers.TryAddWithoutValidation("Authorization", _openRouteServiceApiKey);
             request.Headers.Accept.ParseAdd("application/json, application/geo+json; charset=utf-8");
             request.Content = new StringContent(JsonSerializer.Serialize(requestBody), System.Text.Encoding.UTF8, "application/json");

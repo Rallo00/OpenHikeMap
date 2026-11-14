@@ -11,7 +11,7 @@
     <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
     <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
     <UserSecretsId>OpenHikeMapWeb-7f70dd1f-4b06-4b80-9fae-df0916b0da5c</UserSecretsId>
-    <Version>0.94.0</Version>
+    <Version>0.95.0</Version>
     <!-- Version is the single source for executable metadata, splash screen and update checks. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Title>OpenHikeMap</Title>

@@ -476,6 +476,7 @@ public sealed partial class LocalizationService : BindableBase
         ApplyMapGridTranslations();
         ApplyUpdateTranslations();
         ApplyWebcamTranslations();
+        ApplySettingsTranslations();
     }
     private static void ApplyFolderActionTranslations()
     {

@@ -9,6 +9,7 @@
 @inject ILogger<Home> Logger
 @inject CivilProtectionService CivilProtection
 @inject AppSettingsStore SettingsStore
+@inject IConfiguration Configuration
 @inject Microsoft.Extensions.Hosting.IHostApplicationLifetime HostLifetime
 
 <PageTitle>@ApplicationInfo.WindowTitle</PageTitle>
@@ -124,7 +125,7 @@
 </div>
 @if (Dialog != '\0')
 {
-    <div class="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-label="OpenHikeMap"><button class="close-modal" aria-label="@L["CloseWindow"]" @onclick="() => Dialog = '\0'">×</button>
+    <div class="modal-backdrop"><section class="modal @(Dialog == 's' ? "settings-modal" : "")" role="dialog" aria-modal="true" aria-label="OpenHikeMap"><button class="close-modal" aria-label="@L["CloseWindow"]" @onclick="() => Dialog = '\0'">×</button>
         @if (Dialog == 'e')
         {
             <h2>@L["ExportTitle"]</h2><p>@L["ExportIntro"]</p>
@@ -137,22 +138,69 @@
         }
         else if (Dialog == 's')
         {
-            <div class="section-kicker">PREFERENZE</div><h2>@L["SettingsWindowTitle"]</h2>
-            <label>Lingua<select @bind="Data.Settings.LanguageCode" @bind:after="ApplySettings"><option value="it-IT">Italiano</option><option value="en-US">English</option><option value="fr-FR">Français</option><option value="es-ES">Español</option><option value="de-DE">Deutsch</option><option value="nl-NL">Nederlands</option><option value="nb-NO">Norsk</option><option value="da-DK">Dansk</option><option value="sv-SE">Svenska</option><option value="fi-FI">Suomi</option></select></label>
-            <label>Tema<select @bind="Data.Settings.ThemeMode" @bind:after="ApplySettings"><option value="System">Sistema</option><option value="Light">Chiaro</option><option value="Dark">Scuro</option></select></label>
-            <label>Unità<select @bind="Data.Settings.UnitPreset" @bind:after="ChangeUnits"><option value="Metric">Metriche</option><option value="Imperial">Imperiali</option></select></label>
-            <label>Velocità di cammino (@Data.Settings.SpeedUnit)<input type="number" min="0.1" max="30" step="0.1" @bind="Data.Settings.TravelSpeed" @bind:after="AutoSaveSettings" /></label>
-            <div class="two-col"><label>Latitudine home<input type="number" step="any" @bind="Data.Settings.DefaultLatitude" @bind:after="AutoSaveSettings" /></label><label>Longitudine home<input type="number" step="any" @bind="Data.Settings.DefaultLongitude" @bind:after="AutoSaveSettings" /></label></div>
-            <label>Zoom home<input type="number" min="2" max="19" @bind="Data.Settings.DefaultZoom" @bind:after="AutoSaveSettings" /></label>
-            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowBearingCircle" @bind:after="Refresh" /> @L["ToolbarBearingCircle"]</label>
-            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowCivilProtectionAlerts" @bind:after="ApplySettings" /> @L["SettingsCivilAlerts"]</label>
-            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowHikingTrails" @bind:after="Refresh" /> @L["TrailsOverlay"]</label>
-            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowSatelliteOverlay" @bind:after="Refresh" /> @L["SatelliteOverlay"]</label>
-            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowContourLines" @bind:after="Refresh" /> @L["ContoursOverlay"]</label>
-            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowMapScale" @bind:after="Refresh" /> Scala mappa</label>
-            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowCoordinateGrid" @bind:after="Refresh" /> @L["ToolbarCoordinateGrid"]</label>
-            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowWebcams" @bind:after="RefreshWebcams" /> @L["ToolbarWebcams"]</label>
-            <button class="primary wide" @onclick="SaveSettings">Salva impostazioni</button>
+            <div class="section-kicker">@S("Personalize")</div><h2>@S("Title")</h2>
+            <div class="settings-tabs" role="tablist" aria-label="@S("Sections")">
+                @foreach (var tab in SettingsTabs)
+                {
+                    <button id="settings-tab-@tab.Id" role="tab" aria-selected="@(SettingsTab == tab.Id ? "true" : "false")" aria-controls="settings-panel-@tab.Id" class="@(SettingsTab == tab.Id ? "active" : "")" @onclick="() => SettingsTab = tab.Id">@S(tab.Label)</button>
+                }
+            </div>
+            <div class="settings-content" role="tabpanel" id="settings-panel-@SettingsTab" aria-labelledby="settings-tab-@SettingsTab" tabindex="0">
+            @if (SettingsTab == "general")
+            {
+                <h3>@S("Preferences")</h3><p class="settings-help">@S("GeneralHelp")</p>
+            <label>@S("Language")<select @bind="Data.Settings.LanguageCode" @bind:after="ApplySettingsPreferences"><option value="it-IT">Italiano</option><option value="en-US">English</option><option value="fr-FR">Français</option><option value="es-ES">Español</option><option value="de-DE">Deutsch</option><option value="nl-NL">Nederlands</option><option value="nb-NO">Norsk</option><option value="da-DK">Dansk</option><option value="sv-SE">Svenska</option><option value="fi-FI">Suomi</option></select></label>
+            <label>@S("Theme")<select @bind="Data.Settings.ThemeMode" @bind:after="ApplySettingsPreferences"><option value="System">@S("System")</option><option value="Light">@S("Light")</option><option value="Dark">@S("Dark")</option></select></label>
+<div class="settings-card"><h3>@S("Home")</h3><p class="settings-help">@S("HomeHelp")</p>
+            <div class="two-col"><label>@S("Latitude")<input type="number" min="-90" max="90" step="any" @bind="Data.Settings.DefaultLatitude" @bind:after="AutoSaveSettings" /></label><label>@S("Longitude")<input type="number" min="-180" max="180" step="any" @bind="Data.Settings.DefaultLongitude" @bind:after="AutoSaveSettings" /></label></div>
+            <label>@S("Zoom")<input type="number" min="2" max="19" @bind="Data.Settings.DefaultZoom" @bind:after="AutoSaveSettings" /></label>
+<button @onclick="UseMapAsHome">@S("UseCenter")</button></div>
+            }
+            else if (SettingsTab == "measurement")
+            {
+                <h3>@S("Distances")</h3><p class="settings-help">@S("SpeedHelp")</p>
+            <label>@S("Units")<select @bind="Data.Settings.UnitPreset" @bind:after="ChangeSettingsUnits"><option value="Metric">@S("Metric")</option><option value="Imperial">@S("Imperial")</option></select></label>
+            <label>@S("Speed") (@Data.Settings.SpeedUnit)<input type="number" min="0.1" max="30" step="0.1" @bind="Data.Settings.TravelSpeed" @bind:after="AutoSaveSettings" /></label>
+            }
+            else if (SettingsTab == "display")
+            {
+                <h3>@S("YourMap")</h3><p class="settings-help">@S("DisplayHelp")</p>
+                <label>@S("DefaultMap")<select @bind="Data.Settings.MapStyle" @bind:after="RefreshSettingsPreferences">@foreach (var style in MapStyles) { <option>@style</option> }</select></label>
+                <div class="settings-overlays">
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowBearingCircle" @bind:after="RefreshSettingsPreferences" /> @S("Bearing")</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowCivilProtectionAlerts" @bind:after="ApplySettingsPreferences" /> @S("CivilAlerts")</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowHikingTrails" @bind:after="RefreshSettingsPreferences" /> @S("Trails")</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowSatelliteOverlay" @bind:after="RefreshSettingsPreferences" /> @S("Satellite")</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowContourLines" @bind:after="RefreshSettingsPreferences" /> @S("Contours")</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowMapScale" @bind:after="RefreshSettingsPreferences" /> @S("Scale")</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowCoordinateGrid" @bind:after="RefreshSettingsPreferences" /> @S("Grid")</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowWebcams" @bind:after="RefreshSettingsPreferences" /> @S("Webcams")</label>
+<label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowSavedPoints" @bind:after="RefreshSettingsPreferences" /> @S("Saved")</label>
+                </div>
+            }
+            else if (SettingsTab == "api")
+            {
+                <h3>@S("Connect")</h3><p class="settings-help">@S("ApiHelp")</p>
+                <div class="settings-card"><h3>OpenRouteService</h3>
+                    <p>@S("ApiDescription")</p>
+                    <a href="https://account.heigit.org/" target="_blank" rel="noopener noreferrer">@S("ApiLink") ↗</a>
+                    <label>@S("ApiKey")<input type="@(ShowApiKey ? "text" : "password")" @bind="ApiKeyDraft" autocomplete="off" spellcheck="false" placeholder="@S("ApiPlaceholder")" /></label>
+                    <label class="toggle"><input type="checkbox" @bind="ShowApiKey" /> @S("ShowKey")</label>
+                    <p class="settings-help">@S("ApiStorage")</p>
+                    <div class="settings-api-actions"><button class="primary" @onclick="SaveApiKey">@S("SaveKey")</button><button @onclick="SetDefaultApiKey">@S("DefaultKey")</button></div>
+                    <p role="status" aria-live="polite">@(string.IsNullOrEmpty(ApiKeyStatusKey) ? "" : S(ApiKeyStatusKey))</p>
+                </div>
+                <p class="settings-help">@S("NoKeys")</p>
+            }
+            else if (SettingsTab == "backup")
+            {
+                <h3>@S("BackupTitle")</h3><p class="settings-help">@S("BackupHelp")</p>
+                <div class="settings-card"><h3>@S("ExportBackup")</h3><p>@S("ExportHelp")</p><button class="primary" disabled="@(Busy || IsRouting)" @onclick="ExportFullBackup">@S("ExportBackup")</button></div>
+                <div class="settings-card"><h3>@S("RestoreBackup")</h3><p>@S("RestoreHelp")</p><label class="upload">@S("RestoreFile")<InputFile OnChange="RestoreFullBackup" accept=".json" disabled="@(Busy || IsRouting)" aria-label="@S("RestoreFile")" /></label></div>
+                <div class="settings-card"><h3>@S("ResetTitle")</h3><p>@S("ResetHelp")</p><button class="danger" disabled="@(Busy || IsRouting)" @onclick="ResetSettings">@S("ResetButton")</button></div>
+            }
+            </div>
+            <div class="settings-footer"><span>@S("AutoSave")</span><button class="primary" @onclick="SaveSettings">@S("Done")</button></div>
         }
         else if (Dialog == 'd' && SelectedFolder is not null)
         {
@@ -172,6 +220,6 @@
             <button class="primary wide" @onclick="AddCoordinates">Aggiungi</button>
         }
         else { <div class="section-kicker">PRONTO PER ESPLORARE</div><h2>OpenHikeMap</h2><p>Applicazione Windows per consultare mappe, gestire luoghi, pianificare tracce e visualizzare profilo altimetrico e meteo.</p><p>Mappe © OpenStreetMap contributors; rilievo OpenTopoMap, sentieri Waymarked Trails, immagini Esri, meteo Open-Meteo. Libreria Leaflet inclusa con licenza BSD-2-Clause. Codice del progetto sotto GPL-3.0.</p><p>Le linee tratteggiate rappresentano una bozza diretta. Il calcolo sui sentieri dipende dalla configurazione del servizio cartografico.</p><p>I dati sono conservati nel profilo locale dell’applicazione. Usa il backup per trasferirli su altri dispositivi.</p> }
-        <p class="modal-status" role="status">@Status</p>
+        <p class="modal-status" role="status">@(Dialog == 's' ? (string.IsNullOrEmpty(SettingsFeedbackKey) ? "" : S(SettingsFeedbackKey)) : Status)</p>
     </section></div>
 }

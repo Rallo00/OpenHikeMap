@@ -3,7 +3,7 @@ using OpenHikeMap.Models;
 
 namespace OpenHikeMap.Services;
 
-public enum ImportKind { Route, Backup }
+public enum ImportKind { Route, Backup, FullBackup }
 public sealed record ImportPlan(WebSession Data, ImportKind Kind);
 public sealed class ImportFormatException(string key) : Exception(key);
 
@@ -41,7 +41,12 @@ public static class TransferService
         {
             using var document = JsonDocument.Parse(input);
             var root = document.RootElement;
-            if (extension == ".json")
+            if (extension == ".json" && TryProperty(root, "Format", out var format) && format.ValueKind == JsonValueKind.String && format.GetString() == "OpenHikeMap.FullBackup")
+            {
+                candidate = FullBackupService.Parse(root);
+                kind = ImportKind.FullBackup;
+            }
+            else if (extension == ".json")
             {
                 if (!Has(root, "Settings") || !Has(root, "Folders") || !Has(root, "Places")) throw new ImportFormatException("ImportUnsupported");
                 var backup = root.Deserialize<BackupArchive>(Json) ?? throw new ImportFormatException("ImportUnsupported");
