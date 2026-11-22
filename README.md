@@ -33,5 +33,4 @@ I then started to use AI to build a Windows application that suited my needs, an
 <img width="451" height="394" alt="image" src="https://github.com/user-attachments/assets/f62e0210-b376-49ff-aa5f-cad8f8bfaa88" />
 <img width="495" height="369" alt="image" src="https://github.com/user-attachments/assets/a3ece847-5b1c-4897-be24-73ce7cbe5e8b" />
 <img width="400" height="411" alt="image" src="https://github.com/user-attachments/assets/4c58316c-2699-462f-81c2-b6de33e6234c" />
-<img width="1384" height="860" alt="image" src="https://github.com/user-attachments/assets/aadf59be-a77b-47b5-9401-9563b0bfc52b" />
 
