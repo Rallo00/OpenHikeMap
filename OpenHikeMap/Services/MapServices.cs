@@ -310,6 +310,10 @@ public sealed class RouteElevationPoint
 public sealed class WeatherService
 {
     private readonly HttpClient _httpClient;
+    private string? _forecastJson;
+    private string _updatedLabel = "";
+    private double _forecastLatitude, _forecastLongitude;
+    private DateTime _forecastDay;
     public WeatherService(HttpClient httpClient)
     {
         _httpClient = httpClient;
@@ -317,8 +321,7 @@ public sealed class WeatherService
     }
     public async Task<WeatherForecastResult?> GetForecastAsync(double latitude, double longitude, string languageCode, bool useMetric, string temperatureUnitSetting, CancellationToken cancellationToken = default)
     {
-        var temperatureUnit = string.Equals(temperatureUnitSetting, "F", StringComparison.OrdinalIgnoreCase) ? "fahrenheit" : "celsius";
-        var windUnit = useMetric ? "kmh" : "mph";
+        const string temperatureUnit = "celsius", windUnit = "kmh";
         var timezone = Uri.EscapeDataString("Europe/Rome");
         var url =
             $"https://api.open-meteo.com/v1/forecast?latitude={latitude.ToString(CultureInfo.InvariantCulture)}" +
@@ -327,15 +330,34 @@ public sealed class WeatherService
             $"&temperature_unit={temperatureUnit}&wind_speed_unit={windUnit}&timezone={timezone}&forecast_days=15";
         using var response = await _httpClient.GetAsync(url, cancellationToken);
         response.EnsureSuccessStatusCode();
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var updated = DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+        var result = FormatForecast(json, updated, languageCode, useMetric, temperatureUnitSetting);
+        cancellationToken.ThrowIfCancellationRequested();
+        _forecastJson = json; _updatedLabel = updated;
+        _forecastLatitude = latitude; _forecastLongitude = longitude; _forecastDay = DateTime.Today;
+        return result;
+    }
+
+    public WeatherForecastResult? FormatCachedForecastForPoint(double latitude, double longitude, string languageCode, bool useMetric, string temperatureUnitSetting) =>
+        _forecastDay == DateTime.Today && _forecastLatitude == latitude && _forecastLongitude == longitude
+            ? FormatCachedForecast(languageCode, useMetric, temperatureUnitSetting) : null;
+
+    public WeatherForecastResult? FormatCachedForecast(string languageCode, bool useMetric, string temperatureUnitSetting) =>
+        _forecastJson is null ? null : FormatForecast(_forecastJson, _updatedLabel, languageCode, useMetric, temperatureUnitSetting);
+
+    private static WeatherForecastResult FormatForecast(string json, string updated, string languageCode, bool useMetric, string temperatureUnitSetting)
+    {
+        using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
+        var fahrenheit = string.Equals(temperatureUnitSetting, "F", StringComparison.OrdinalIgnoreCase);
+        var windUnit = useMetric ? "kmh" : "mph";
         var result = new WeatherForecastResult
         {
             Latitude = root.GetProperty("latitude").GetDouble(),
             Longitude = root.GetProperty("longitude").GetDouble()
         };
-        result.UpdatedLabel = DateTime.Now.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+        result.UpdatedLabel = updated;
         if (root.TryGetProperty("daily", out var daily))
         {
             var times = GetStringArray(daily, "time");
@@ -354,6 +376,7 @@ public sealed class WeatherService
                 var dayCulture = GetWeatherCulture(languageCode);
                 var minTemp = GetArrayValue(minTemps, index);
                 var maxTemp = GetArrayValue(maxTemps, index);
+                if (fahrenheit) { minTemp = minTemp * 9 / 5 + 32; maxTemp = maxTemp * 9 / 5 + 32; }
                 var rain = GetArrayValue(rainProbability, index);
                 var wind = GetArrayValue(windMax, index);
                 var windDirection = GetArrayValue(windDirections, index);
@@ -363,13 +386,13 @@ public sealed class WeatherService
                 var sunset = GetArrayValue(sunsets, index);
                 result.Days.Add(new WeatherForecastDay
                 {
-                    DayLabel = index == 0
+                    DayLabel = date.Date == DateTime.Today
                         ? GetTodayLabel(languageCode)
                         : date.ToString("ddd dd", dayCulture),
                     WeatherIconKey = GetWeatherIconKey(weatherCode, wind, rain),
                     TemperatureLabel = $"{minTemp:F0}° / {maxTemp:F0}°",
                     WeatherLabel = MapWeatherCode(weatherCode, languageCode),
-                    WindLabel = $"{wind:F0} {windUnit}",
+                    WindLabel = $"{(useMetric ? wind : wind / 1.609344):F0} {windUnit}",
                     WindDirectionLabel = MapWindDirection(windDirection, languageCode),
                     RainLabel = $"{rain:F0}%",
                     UvLabel = uv > 0 ? $"UV {uv:F0}" : "UV --",

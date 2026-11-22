@@ -4,6 +4,14 @@ namespace OpenHikeMap.Services;
 
 public static class RouteMidpoint
 {
+    public static RoutePathPoint? ApplyWeatherReference(WebSession session)
+    {
+        var point = Find(session.RouteGeometry);
+        session.Settings.WeatherReferenceLatitude = point?.Latitude;
+        session.Settings.WeatherReferenceLongitude = point?.Longitude;
+        return point;
+    }
+
     public static RoutePathPoint? Find(IReadOnlyList<RoutePathPoint> path)
     {
         if (path.Count == 0) return null;

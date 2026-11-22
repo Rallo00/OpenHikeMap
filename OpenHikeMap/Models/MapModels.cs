@@ -51,7 +51,7 @@ public sealed partial class LocalizationService : BindableBase
             ["ToolbarSatellite"] = "Overlay satellitare",
             ["ToolbarContours"] = "Mostra curve di livello",
             ["ToolbarWeather"] = "Mostra meteo percorso",
-            ["ToolbarCivilAlerts"] = "Visualizza allerte SNPC-IT (Protezione Civile Italiana)",
+            ["ToolbarEumetnetAlerts"] = "Visualizza allerte EUMETNET (EUMETNET – Meteoalarm)",
             ["ToolbarBearingCircle"] = "Overlay direzionale",
             ["ToolbarRuler"] = "Strumento righello",
             ["ToolbarMapScale"] = "Scala mappa",
@@ -160,7 +160,7 @@ public sealed partial class LocalizationService : BindableBase
             ["SettingsContours"] = "Attiva curve di livello",
             ["SettingsSatellite"] = "Attiva overlay satellitare",
             ["SettingsWeather"] = "Attiva meteo percorso",
-            ["SettingsCivilAlerts"] = "Attiva allerte SNPC-IT (Protezione Civile Italiana)",
+            ["SettingsEumetnetAlerts"] = "Attiva allerte EUMETNET (EUMETNET – Meteoalarm)",
             ["SettingsWeatherGradients"] = "Usa sfumature nei riquadri meteo",
             ["SettingsUnitsGroup"] = "Unità di misura",
             ["SettingsUnitPreset"] = "Sistema unità",
@@ -197,10 +197,10 @@ public sealed partial class LocalizationService : BindableBase
             ["WeatherReferenceTitle"] = "Punto di riferimento per meteo",
             ["MapContextSetWeatherPoint"] = "Imposta come punto di calcolo meteo"
             ,
-            ["CivilAlertTitle"] = "Allerta Protezione Civile",
-            ["CivilAlertNone"] = "Nessuna allerta SNPC-IT sulla zona della traccia.",
-            ["CivilAlertLoading"] = "Verifica allerte SNPC-IT in corso...",
-            ["CivilAlertUnavailable"] = "Allerte SNPC-IT non disponibili. Impossibile verificare il bollettino.",
+            ["EumetnetAlertTitle"] = "Allerta EUMETNET",
+            ["EumetnetAlertNone"] = "Nessuna allerta EUMETNET sulla zona della traccia.",
+            ["EumetnetAlertLoading"] = "Verifica allerte EUMETNET in corso...",
+            ["EumetnetAlertUnavailable"] = "Allerte EUMETNET non disponibili. Impossibile verificare il bollettino.",
             ["WeatherSunrise"] = "Alba",
             ["WeatherSunset"] = "Tramonto",
             ["RoutePointsInserted"] = "Tappe inserite"
@@ -233,7 +233,7 @@ public sealed partial class LocalizationService : BindableBase
             ["ToolbarSatellite"] = "Satellite overlay",
             ["ToolbarContours"] = "Show contour lines",
             ["ToolbarWeather"] = "Show route weather",
-            ["ToolbarCivilAlerts"] = "Show SNPC-IT alerts (Italian Civil Protection)",
+            ["ToolbarEumetnetAlerts"] = "Show EUMETNET alerts (EUMETNET – Meteoalarm)",
             ["ToolbarBearingCircle"] = "Show bearing circle",
             ["ToolbarRuler"] = "Ruler tool",
             ["ToolbarMapScale"] = "Map scale",
@@ -342,7 +342,7 @@ public sealed partial class LocalizationService : BindableBase
             ["SettingsContours"] = "Enable contour lines",
             ["SettingsSatellite"] = "Enable satellite overlay",
             ["SettingsWeather"] = "Enable route weather",
-            ["SettingsCivilAlerts"] = "Enable SNPC-IT alerts (Italian Civil Protection)",
+            ["SettingsEumetnetAlerts"] = "Enable EUMETNET alerts (EUMETNET – Meteoalarm)",
             ["SettingsWeatherGradients"] = "Use gradients in weather cards",
             ["SettingsUnitsGroup"] = "Measurement units",
             ["SettingsUnitPreset"] = "Unit system",
@@ -377,10 +377,10 @@ public sealed partial class LocalizationService : BindableBase
             ["WeatherNoData"] = "No weather data.",
             ["WeatherReferenceTitle"] = "Weather reference point",
             ["MapContextSetWeatherPoint"] = "Set as weather calculation point",
-            ["CivilAlertTitle"] = "Civil Protection alert",
-            ["CivilAlertNone"] = "No SNPC-IT alert for the route area.",
-            ["CivilAlertLoading"] = "Checking SNPC-IT alerts...",
-            ["CivilAlertUnavailable"] = "SNPC-IT alerts unavailable. The bulletin could not be checked.",
+            ["EumetnetAlertTitle"] = "EUMETNET alert",
+            ["EumetnetAlertNone"] = "No EUMETNET alert for the route area.",
+            ["EumetnetAlertLoading"] = "Checking EUMETNET alerts...",
+            ["EumetnetAlertUnavailable"] = "EUMETNET alerts unavailable. The bulletin could not be checked.",
             ["WeatherSunrise"] = "Sunrise",
             ["WeatherSunset"] = "Sunset",
             ["RoutePointsInserted"] = "Route points inserted"
@@ -428,7 +428,7 @@ public sealed partial class LocalizationService : BindableBase
             ["ToolbarSearch"] = "Rechercher", ["ToolbarSearchPlaceholder"] = "Recherchez un lieu ici", ["ToolbarShowSaved"] = "Afficher les éléments enregistrés", ["ToolbarBearingCircle"] = "Outil directionnel", ["ToolbarRuler"] = "Outil règle", ["ToolbarMapScale"] = "Échelle de la carte",
             ["ProfileDistanceLabel"] = "Distance totale", ["ProfileTimeLabel"] = "Temps", ["ProfileElevationLabel"] = "Dénivelé", ["ProfileSlopeLabel"] = "Pente moyenne",
             ["MapContextAddPin"] = "Ajouter un repère", ["MapContextDeleteRoutePoint"] = "Supprimer le point de trace", ["MapContextSetEnd"] = "Définir comme point d'arrivée", ["MapContextSetStart"] = "Définir comme point de départ", ["MapContextSetWaypoint"] = "Définir comme étape", ["MapContextSetDirectWaypoint"] = "Définir comme étape directe",
-            ["CivilAlertNone"] = "Aucune alerte SNPC-IT sur la zone de l'itinéraire.", ["RoutePointsInserted"] = "Étapes insérées"
+            ["EumetnetAlertNone"] = "Aucune alerte EUMETNET sur la zone de l'itinéraire.", ["RoutePointsInserted"] = "Étapes insérées"
         });
         ApplyTranslations("es-ES", new Dictionary<string, string>
         {
@@ -447,7 +447,7 @@ public sealed partial class LocalizationService : BindableBase
             ["ToolbarSearch"] = "Buscar", ["ToolbarSearchPlaceholder"] = "Busca un lugar aquí", ["ToolbarShowSaved"] = "Mostrar elementos guardados", ["ToolbarBearingCircle"] = "Herramienta direccional", ["ToolbarRuler"] = "Herramienta regla", ["ToolbarMapScale"] = "Escala del mapa",
             ["ProfileDistanceLabel"] = "Distancia total", ["ProfileTimeLabel"] = "Tiempo", ["ProfileElevationLabel"] = "Desnivel", ["ProfileSlopeLabel"] = "Pendiente media",
             ["MapContextAddPin"] = "Añadir marcador", ["MapContextDeleteRoutePoint"] = "Eliminar punto de ruta", ["MapContextSetEnd"] = "Establecer como destino", ["MapContextSetStart"] = "Establecer como inicio", ["MapContextSetWaypoint"] = "Establecer como punto de paso", ["MapContextSetDirectWaypoint"] = "Establecer como punto directo",
-            ["CivilAlertNone"] = "No hay alertas SNPC-IT en la zona de la ruta.", ["RoutePointsInserted"] = "Puntos de ruta insertados"
+            ["EumetnetAlertNone"] = "No hay alertas EUMETNET en la zona de la ruta.", ["RoutePointsInserted"] = "Puntos de ruta insertados"
         });
         ApplyTranslations("de-DE", new Dictionary<string, string>
         {
@@ -464,19 +464,20 @@ public sealed partial class LocalizationService : BindableBase
             ["ToolbarSearch"] = "Suchen", ["ToolbarSearchPlaceholder"] = "Ort hier suchen", ["ToolbarShowSaved"] = "Gespeicherte Elemente anzeigen", ["ToolbarBearingCircle"] = "Richtungswerkzeug", ["ToolbarRuler"] = "Linealwerkzeug", ["ToolbarMapScale"] = "Maßstab",
             ["ProfileDistanceLabel"] = "Gesamtdistanz", ["ProfileTimeLabel"] = "Zeit", ["ProfileElevationLabel"] = "Höhenunterschied", ["ProfileSlopeLabel"] = "Durchschnittssteigung",
             ["MapContextAddPin"] = "Pin hinzufügen", ["MapContextDeleteRoutePoint"] = "Routenpunkt löschen", ["MapContextSetEnd"] = "Als Zielpunkt setzen", ["MapContextSetStart"] = "Als Startpunkt setzen", ["MapContextSetWaypoint"] = "Als Wegpunkt setzen", ["MapContextSetDirectWaypoint"] = "Als direkten Wegpunkt setzen",
-            ["CivilAlertNone"] = "Keine SNPC-IT-Warnung im Routenbereich.", ["RoutePointsInserted"] = "Routenpunkte eingefügt"
+            ["EumetnetAlertNone"] = "Keine EUMETNET-Warnung im Routenbereich.", ["RoutePointsInserted"] = "Routenpunkte eingefügt"
         });
-        ApplyTranslations("nl-NL", new Dictionary<string, string> { ["MenuFile"] = "Bestand", ["MenuSettings"] = "Instellingen", ["SearchButton"] = "Zoeken", ["SavedPlacesGroup"] = "Opgeslagen elementen", ["MapLegendGroup"] = "Kaartlegenda", ["MapLegendEmpty"] = "Geen paden zichtbaar in het huidige gebied.", ["WeatherGroup"] = "Weer", ["WeatherUpdated"] = "Bijgewerkt", ["ToolbarSearch"] = "Zoeken", ["ToolbarSearchPlaceholder"] = "Zoek hier een plaats", ["ToolbarShowSaved"] = "Opgeslagen elementen tonen", ["ToolbarBearingCircle"] = "Richtingstool", ["ToolbarRuler"] = "Liniaal", ["ToolbarMapScale"] = "Kaartschaal", ["ProfileDistanceLabel"] = "Totale afstand", ["ProfileTimeLabel"] = "Tijd", ["ProfileElevationLabel"] = "Hoogteverschil", ["ProfileSlopeLabel"] = "Gemiddelde helling", ["MapContextAddPin"] = "Pin toevoegen", ["MapContextDeleteRoutePoint"] = "Routepunt verwijderen", ["MapContextSetEnd"] = "Als eindpunt instellen", ["MapContextSetStart"] = "Als startpunt instellen", ["MapContextSetWaypoint"] = "Als waypoint instellen", ["MapContextSetDirectWaypoint"] = "Als direct waypoint instellen", ["WeatherReferenceTitle"] = "Weerreferentiepunt", ["MapContextSetWeatherPoint"] = "Instellen als weerberekeningspunt", ["CivilAlertNone"] = "Geen SNPC-IT-waarschuwing voor het routegebied.", ["RoutePointsInserted"] = "Routepunten ingevoerd" });
-        ApplyTranslations("nb-NO", new Dictionary<string, string> { ["MenuFile"] = "Fil", ["MenuSettings"] = "Innstillinger", ["SearchButton"] = "Søk", ["SavedPlacesGroup"] = "Lagrede elementer", ["MapLegendGroup"] = "Kartforklaring", ["MapLegendEmpty"] = "Ingen stier synlige i gjeldende område.", ["WeatherGroup"] = "Vær", ["WeatherUpdated"] = "Oppdatert", ["ToolbarSearch"] = "Søk", ["ToolbarSearchPlaceholder"] = "Søk etter et sted her", ["ToolbarShowSaved"] = "Vis lagrede elementer", ["ToolbarBearingCircle"] = "Retningsverktøy", ["ToolbarRuler"] = "Linjalverktøy", ["ToolbarMapScale"] = "Kartskala", ["ProfileDistanceLabel"] = "Total avstand", ["ProfileTimeLabel"] = "Tid", ["ProfileElevationLabel"] = "Høydemeter", ["ProfileSlopeLabel"] = "Gjennomsnittlig stigning", ["MapContextAddPin"] = "Legg til pin", ["MapContextDeleteRoutePoint"] = "Slett rutepunkt", ["MapContextSetEnd"] = "Sett som endepunkt", ["MapContextSetStart"] = "Sett som startpunkt", ["MapContextSetWaypoint"] = "Sett som veipunkt", ["MapContextSetDirectWaypoint"] = "Sett som direkte veipunkt", ["WeatherReferenceTitle"] = "Værreferansepunkt", ["MapContextSetWeatherPoint"] = "Sett som værberegningspunkt", ["CivilAlertNone"] = "Ingen SNPC-IT-varsel i ruteområdet.", ["RoutePointsInserted"] = "Rutekpunkter lagt til" });
-        ApplyTranslations("da-DK", new Dictionary<string, string> { ["MenuFile"] = "Fil", ["MenuSettings"] = "Indstillinger", ["SearchButton"] = "Søg", ["SavedPlacesGroup"] = "Gemte elementer", ["MapLegendGroup"] = "Kortforklaring", ["MapLegendEmpty"] = "Ingen stier synlige i det aktuelle område.", ["WeatherGroup"] = "Vejr", ["WeatherUpdated"] = "Opdateret", ["ToolbarSearch"] = "Søg", ["ToolbarSearchPlaceholder"] = "Søg efter et sted her", ["ToolbarShowSaved"] = "Vis gemte elementer", ["ToolbarBearingCircle"] = "Retningsværktøj", ["ToolbarRuler"] = "Linealværktøj", ["ToolbarMapScale"] = "Kortskala", ["ProfileDistanceLabel"] = "Samlet afstand", ["ProfileTimeLabel"] = "Tid", ["ProfileElevationLabel"] = "Højdeforskel", ["ProfileSlopeLabel"] = "Gennemsnitlig hældning", ["MapContextAddPin"] = "Tilføj pin", ["MapContextDeleteRoutePoint"] = "Slet rutepunkt", ["MapContextSetEnd"] = "Sæt som slutpunkt", ["MapContextSetStart"] = "Sæt som startpunkt", ["MapContextSetWaypoint"] = "Sæt som waypoint", ["MapContextSetDirectWaypoint"] = "Sæt som direkte waypoint", ["WeatherReferenceTitle"] = "Vejrreferencepunkt", ["MapContextSetWeatherPoint"] = "Sæt som vejrberegningspunkt", ["CivilAlertNone"] = "Ingen SNPC-IT-varsel i ruteområdet.", ["RoutePointsInserted"] = "Rutepunkter indsat" });
-        ApplyTranslations("sv-SE", new Dictionary<string, string> { ["MenuFile"] = "Fil", ["MenuSettings"] = "Inställningar", ["SearchButton"] = "Sök", ["SavedPlacesGroup"] = "Sparade objekt", ["MapLegendGroup"] = "Kartlegend", ["MapLegendEmpty"] = "Inga leder synliga i det aktuella området.", ["WeatherGroup"] = "Väder", ["WeatherUpdated"] = "Uppdaterad", ["ToolbarSearch"] = "Sök", ["ToolbarSearchPlaceholder"] = "Sök en plats här", ["ToolbarShowSaved"] = "Visa sparade objekt", ["ToolbarBearingCircle"] = "Riktningsverktyg", ["ToolbarRuler"] = "Linjalsverktyg", ["ToolbarMapScale"] = "Kartskala", ["ProfileDistanceLabel"] = "Total sträcka", ["ProfileTimeLabel"] = "Tid", ["ProfileElevationLabel"] = "Höjdskillnad", ["ProfileSlopeLabel"] = "Genomsnittlig lutning", ["MapContextAddPin"] = "Lägg till pin", ["MapContextDeleteRoutePoint"] = "Ta bort ruttpunkt", ["MapContextSetEnd"] = "Ange som slutpunkt", ["MapContextSetStart"] = "Ange som startpunkt", ["MapContextSetWaypoint"] = "Ange som waypoint", ["MapContextSetDirectWaypoint"] = "Ange som direkt waypoint", ["WeatherReferenceTitle"] = "Väderreferenspunkt", ["MapContextSetWeatherPoint"] = "Ange som väderberäkningspunkt", ["CivilAlertNone"] = "Ingen SNPC-IT-varning i ruttområdet.", ["RoutePointsInserted"] = "Ruttpunkter infogade" });
-        ApplyTranslations("fi-FI", new Dictionary<string, string> { ["MenuFile"] = "Tiedosto", ["MenuSettings"] = "Asetukset", ["SearchButton"] = "Hae", ["SavedPlacesGroup"] = "Tallennetut kohteet", ["MapLegendGroup"] = "Kartan selite", ["MapLegendEmpty"] = "Nykyisellä alueella ei näy polkuja.", ["WeatherGroup"] = "Sää", ["WeatherUpdated"] = "Päivitetty", ["ToolbarSearch"] = "Hae", ["ToolbarSearchPlaceholder"] = "Hae paikkaa tästä", ["ToolbarShowSaved"] = "Näytä tallennetut kohteet", ["ToolbarBearingCircle"] = "Suuntaustyökalu", ["ToolbarRuler"] = "Viivaintyökalu", ["ToolbarMapScale"] = "Karttakaava", ["ProfileDistanceLabel"] = "Kokonaismatka", ["ProfileTimeLabel"] = "Aika", ["ProfileElevationLabel"] = "Korkeusero", ["ProfileSlopeLabel"] = "Keskimääräinen kaltevuus", ["MapContextAddPin"] = "Lisää pinni", ["MapContextDeleteRoutePoint"] = "Poista reittipiste", ["MapContextSetEnd"] = "Aseta päätepisteeksi", ["MapContextSetStart"] = "Aseta aloituspisteeksi", ["MapContextSetWaypoint"] = "Aseta välietapiksi", ["MapContextSetDirectWaypoint"] = "Aseta suoraksi välietapiksi", ["WeatherReferenceTitle"] = "Sään viitepiste", ["MapContextSetWeatherPoint"] = "Aseta sään laskentapisteeksi", ["CivilAlertNone"] = "Ei SNPC-IT-hälytystä reitin alueella.", ["RoutePointsInserted"] = "Reittipisteitä lisätty" });
+        ApplyTranslations("nl-NL", new Dictionary<string, string> { ["MenuFile"] = "Bestand", ["MenuSettings"] = "Instellingen", ["SearchButton"] = "Zoeken", ["SavedPlacesGroup"] = "Opgeslagen elementen", ["MapLegendGroup"] = "Kaartlegenda", ["MapLegendEmpty"] = "Geen paden zichtbaar in het huidige gebied.", ["WeatherGroup"] = "Weer", ["WeatherUpdated"] = "Bijgewerkt", ["ToolbarSearch"] = "Zoeken", ["ToolbarSearchPlaceholder"] = "Zoek hier een plaats", ["ToolbarShowSaved"] = "Opgeslagen elementen tonen", ["ToolbarBearingCircle"] = "Richtingstool", ["ToolbarRuler"] = "Liniaal", ["ToolbarMapScale"] = "Kaartschaal", ["ProfileDistanceLabel"] = "Totale afstand", ["ProfileTimeLabel"] = "Tijd", ["ProfileElevationLabel"] = "Hoogteverschil", ["ProfileSlopeLabel"] = "Gemiddelde helling", ["MapContextAddPin"] = "Pin toevoegen", ["MapContextDeleteRoutePoint"] = "Routepunt verwijderen", ["MapContextSetEnd"] = "Als eindpunt instellen", ["MapContextSetStart"] = "Als startpunt instellen", ["MapContextSetWaypoint"] = "Als waypoint instellen", ["MapContextSetDirectWaypoint"] = "Als direct waypoint instellen", ["WeatherReferenceTitle"] = "Weerreferentiepunt", ["MapContextSetWeatherPoint"] = "Instellen als weerberekeningspunt", ["EumetnetAlertNone"] = "Geen EUMETNET-waarschuwing voor het routegebied.", ["RoutePointsInserted"] = "Routepunten ingevoerd" });
+        ApplyTranslations("nb-NO", new Dictionary<string, string> { ["MenuFile"] = "Fil", ["MenuSettings"] = "Innstillinger", ["SearchButton"] = "Søk", ["SavedPlacesGroup"] = "Lagrede elementer", ["MapLegendGroup"] = "Kartforklaring", ["MapLegendEmpty"] = "Ingen stier synlige i gjeldende område.", ["WeatherGroup"] = "Vær", ["WeatherUpdated"] = "Oppdatert", ["ToolbarSearch"] = "Søk", ["ToolbarSearchPlaceholder"] = "Søk etter et sted her", ["ToolbarShowSaved"] = "Vis lagrede elementer", ["ToolbarBearingCircle"] = "Retningsverktøy", ["ToolbarRuler"] = "Linjalverktøy", ["ToolbarMapScale"] = "Kartskala", ["ProfileDistanceLabel"] = "Total avstand", ["ProfileTimeLabel"] = "Tid", ["ProfileElevationLabel"] = "Høydemeter", ["ProfileSlopeLabel"] = "Gjennomsnittlig stigning", ["MapContextAddPin"] = "Legg til pin", ["MapContextDeleteRoutePoint"] = "Slett rutepunkt", ["MapContextSetEnd"] = "Sett som endepunkt", ["MapContextSetStart"] = "Sett som startpunkt", ["MapContextSetWaypoint"] = "Sett som veipunkt", ["MapContextSetDirectWaypoint"] = "Sett som direkte veipunkt", ["WeatherReferenceTitle"] = "Værreferansepunkt", ["MapContextSetWeatherPoint"] = "Sett som værberegningspunkt", ["EumetnetAlertNone"] = "Ingen EUMETNET-varsel i ruteområdet.", ["RoutePointsInserted"] = "Rutekpunkter lagt til" });
+        ApplyTranslations("da-DK", new Dictionary<string, string> { ["MenuFile"] = "Fil", ["MenuSettings"] = "Indstillinger", ["SearchButton"] = "Søg", ["SavedPlacesGroup"] = "Gemte elementer", ["MapLegendGroup"] = "Kortforklaring", ["MapLegendEmpty"] = "Ingen stier synlige i det aktuelle område.", ["WeatherGroup"] = "Vejr", ["WeatherUpdated"] = "Opdateret", ["ToolbarSearch"] = "Søg", ["ToolbarSearchPlaceholder"] = "Søg efter et sted her", ["ToolbarShowSaved"] = "Vis gemte elementer", ["ToolbarBearingCircle"] = "Retningsværktøj", ["ToolbarRuler"] = "Linealværktøj", ["ToolbarMapScale"] = "Kortskala", ["ProfileDistanceLabel"] = "Samlet afstand", ["ProfileTimeLabel"] = "Tid", ["ProfileElevationLabel"] = "Højdeforskel", ["ProfileSlopeLabel"] = "Gennemsnitlig hældning", ["MapContextAddPin"] = "Tilføj pin", ["MapContextDeleteRoutePoint"] = "Slet rutepunkt", ["MapContextSetEnd"] = "Sæt som slutpunkt", ["MapContextSetStart"] = "Sæt som startpunkt", ["MapContextSetWaypoint"] = "Sæt som waypoint", ["MapContextSetDirectWaypoint"] = "Sæt som direkte waypoint", ["WeatherReferenceTitle"] = "Vejrreferencepunkt", ["MapContextSetWeatherPoint"] = "Sæt som vejrberegningspunkt", ["EumetnetAlertNone"] = "Ingen EUMETNET-varsel i ruteområdet.", ["RoutePointsInserted"] = "Rutepunkter indsat" });
+        ApplyTranslations("sv-SE", new Dictionary<string, string> { ["MenuFile"] = "Fil", ["MenuSettings"] = "Inställningar", ["SearchButton"] = "Sök", ["SavedPlacesGroup"] = "Sparade objekt", ["MapLegendGroup"] = "Kartlegend", ["MapLegendEmpty"] = "Inga leder synliga i det aktuella området.", ["WeatherGroup"] = "Väder", ["WeatherUpdated"] = "Uppdaterad", ["ToolbarSearch"] = "Sök", ["ToolbarSearchPlaceholder"] = "Sök en plats här", ["ToolbarShowSaved"] = "Visa sparade objekt", ["ToolbarBearingCircle"] = "Riktningsverktyg", ["ToolbarRuler"] = "Linjalsverktyg", ["ToolbarMapScale"] = "Kartskala", ["ProfileDistanceLabel"] = "Total sträcka", ["ProfileTimeLabel"] = "Tid", ["ProfileElevationLabel"] = "Höjdskillnad", ["ProfileSlopeLabel"] = "Genomsnittlig lutning", ["MapContextAddPin"] = "Lägg till pin", ["MapContextDeleteRoutePoint"] = "Ta bort ruttpunkt", ["MapContextSetEnd"] = "Ange som slutpunkt", ["MapContextSetStart"] = "Ange som startpunkt", ["MapContextSetWaypoint"] = "Ange som waypoint", ["MapContextSetDirectWaypoint"] = "Ange som direkt waypoint", ["WeatherReferenceTitle"] = "Väderreferenspunkt", ["MapContextSetWeatherPoint"] = "Ange som väderberäkningspunkt", ["EumetnetAlertNone"] = "Ingen EUMETNET-varning i ruttområdet.", ["RoutePointsInserted"] = "Ruttpunkter infogade" });
+        ApplyTranslations("fi-FI", new Dictionary<string, string> { ["MenuFile"] = "Tiedosto", ["MenuSettings"] = "Asetukset", ["SearchButton"] = "Hae", ["SavedPlacesGroup"] = "Tallennetut kohteet", ["MapLegendGroup"] = "Kartan selite", ["MapLegendEmpty"] = "Nykyisellä alueella ei näy polkuja.", ["WeatherGroup"] = "Sää", ["WeatherUpdated"] = "Päivitetty", ["ToolbarSearch"] = "Hae", ["ToolbarSearchPlaceholder"] = "Hae paikkaa tästä", ["ToolbarShowSaved"] = "Näytä tallennetut kohteet", ["ToolbarBearingCircle"] = "Suuntaustyökalu", ["ToolbarRuler"] = "Viivaintyökalu", ["ToolbarMapScale"] = "Karttakaava", ["ProfileDistanceLabel"] = "Kokonaismatka", ["ProfileTimeLabel"] = "Aika", ["ProfileElevationLabel"] = "Korkeusero", ["ProfileSlopeLabel"] = "Keskimääräinen kaltevuus", ["MapContextAddPin"] = "Lisää pinni", ["MapContextDeleteRoutePoint"] = "Poista reittipiste", ["MapContextSetEnd"] = "Aseta päätepisteeksi", ["MapContextSetStart"] = "Aseta aloituspisteeksi", ["MapContextSetWaypoint"] = "Aseta välietapiksi", ["MapContextSetDirectWaypoint"] = "Aseta suoraksi välietapiksi", ["WeatherReferenceTitle"] = "Sään viitepiste", ["MapContextSetWeatherPoint"] = "Aseta sään laskentapisteeksi", ["EumetnetAlertNone"] = "Ei EUMETNET-hälytystä reitin alueella.", ["RoutePointsInserted"] = "Reittipisteitä lisätty" });
         ApplyFolderActionTranslations();
         ApplyTransferTranslations();
         ApplyMapGridTranslations();
         ApplyUpdateTranslations();
         ApplyWebcamTranslations();
         ApplySettingsTranslations();
+        ApplyEumetnetTranslations();
     }
     private static void ApplyFolderActionTranslations()
     {
@@ -527,7 +528,7 @@ public sealed class AppSettings : BindableBase
     private bool _showContourLines = true;
     private bool _showSavedPoints = true;
     private bool _showWeather;
-    private bool _showCivilProtectionAlerts;
+    private bool _showEumetnetAlerts;
     private bool _showBearingCircle;
     private bool _showRulerTool;
     private bool _showMapScale;
@@ -555,7 +556,7 @@ public sealed class AppSettings : BindableBase
     public bool ShowContourLines { get => _showContourLines; set => SetProperty(ref _showContourLines, value); }
     public bool ShowSavedPoints { get => _showSavedPoints; set => SetProperty(ref _showSavedPoints, value); }
     public bool ShowWeather { get => _showWeather; set => SetProperty(ref _showWeather, value); }
-    public bool ShowCivilProtectionAlerts { get => _showCivilProtectionAlerts; set => SetProperty(ref _showCivilProtectionAlerts, value); }
+    public bool ShowEumetnetAlerts { get => _showEumetnetAlerts; set => SetProperty(ref _showEumetnetAlerts, value); }
     public bool ShowBearingCircle { get => _showBearingCircle; set => SetProperty(ref _showBearingCircle, value); }
     public bool ShowRulerTool { get => _showRulerTool; set => SetProperty(ref _showRulerTool, value); }
     public bool ShowMapScale { get => _showMapScale; set => SetProperty(ref _showMapScale, value); }

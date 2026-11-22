@@ -72,6 +72,7 @@ public partial class Home
     private async Task RestoreFullBackup(InputFileChangeEventArgs e)
     {
         if (Busy || IsRouting) return;
+        var restoredRoute = false;
         Busy = true;
         try
         {
@@ -84,10 +85,12 @@ public partial class Home
             var confirmation = plan.Kind == ImportKind.FullBackup ? S("RestoreConfirm") : L["ImportBackupConfirm"];
             if (!await JS.InvokeAsync<bool>("confirm", confirmation)) return;
             await PersistSettingsSession(restored);
-            WeatherRequest?.Cancel(); AlertsRequest?.Cancel();
+            WeatherRequest?.Cancel();
+            restoredRoute = plan.Kind == ImportKind.FullBackup;
+            if (restoredRoute) ClearTrailContext();
             Data = restored; DiskSettingsWritable = true; StorageWritable = true;
             SelectedPlace = null; SelectedFolder = null; CollapsedFolders.Clear();
-            Forecast = null; AutomaticWeatherPoint = RouteMidpoint.Find(Data.RouteGeometry);
+            AutomaticWeatherPoint = RouteMidpoint.Find(Data.RouteGeometry);
             L.SetLanguage(Data.Settings.LanguageCode);
             await Save(); await RenderMap();
             if (Path.Count > 0) await FitRoute();
@@ -98,7 +101,8 @@ public partial class Home
         catch (Exception ex) when (ex is JsonException or InvalidDataException or ImportFormatException or IOException or UnauthorizedAccessException or JSException)
         { SettingsFeedbackKey = "RestoreError"; }
         finally { Busy = false; }
-        await Task.WhenAll(RefreshCivilAlertsAsync(), WeatherPoint is not null ? UpdateWeatherAsync() : Task.CompletedTask);
+        if (restoredRoute) await RefreshTrailWeatherAsync();
+        else { ReformatTrailContext(); await RenderMap(); }
     }
 
     private async Task PersistSettingsSession(WebSession snapshot)
@@ -141,6 +145,7 @@ public partial class Home
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JSException or InvalidDataException)
         { SettingsFeedbackKey = "ResetError"; }
         finally { Busy = false; }
-        await Task.WhenAll(RefreshCivilAlertsAsync(), WeatherPoint is not null ? UpdateWeatherAsync() : Task.CompletedTask);
+        ReformatTrailContext();
+        await RenderMap();
     }
 }

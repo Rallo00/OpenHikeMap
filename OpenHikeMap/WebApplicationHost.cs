@@ -24,8 +24,8 @@ public static class WebApplicationHost
         builder.Services.AddHttpClient<RoutingService>(c => c.Timeout = TimeSpan.FromSeconds(45));
         builder.Services.AddHttpClient<ElevationService>();
         builder.Services.AddHttpClient<WeatherService>(c => c.Timeout = TimeSpan.FromSeconds(20));
-        builder.Services.AddHttpClient("CivilProtection", c => { c.Timeout = TimeSpan.FromSeconds(30); c.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent); });
-        builder.Services.AddSingleton(sp => new CivilProtectionService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("CivilProtection")));
+        builder.Services.AddHttpClient("Eumetnet", c => { c.Timeout = TimeSpan.FromSeconds(60); c.MaxResponseContentBufferSize = 64 * 1024 * 1024; c.DefaultRequestHeaders.UserAgent.ParseAdd(ApplicationInfo.UserAgent); });
+        builder.Services.AddSingleton(sp => new EumetnetService(sp.GetRequiredService<IHttpClientFactory>().CreateClient("Eumetnet"), sp.GetRequiredService<ILogger<EumetnetService>>()));
         builder.Services.AddSingleton<OsmTileService>();
         builder.Services.AddSingleton<AppSettingsStore>();
         builder.Services.AddHttpClient("OpenCam", c => c.Timeout = TimeSpan.FromSeconds(15));
