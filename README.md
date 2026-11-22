@@ -15,7 +15,7 @@ I then started to use AI to build a Windows application that suited my needs, an
 - Search registered Cities, Peaks, Bivouacs, Lodges;
 - Customizable pins of places with images and colors with tree structure with editability;
 - Access to weather with 15 days in advance (Temperature, Wind, Condition, UV, Sunrise/Sunset);
-- Italian Civil Protection National Service (SNPC-IT) integrated in order to show up criticalities on weather forecasts and terrain;
+- EuMetSat integrated in order to show up criticalities on weather forecasts and terrain throughout Europe;
 - Show on map registered hike paths;
 - Show on map satellite view;
 - Show on map countour lines to quickly figure out altitude is desired OpenStreetMap does not have topographic lines;
