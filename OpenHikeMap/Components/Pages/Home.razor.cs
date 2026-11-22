@@ -22,6 +22,7 @@ public partial class Home
     private bool MapStarting, MapInitializationFailed;
     private Task StartupContextRefresh = Task.CompletedTask;
     private List<RoutePathPoint>? RenderedPath;
+    private List<EumetnetAlertArea>? RenderedAlertAreas;
     private bool RenderedDraft;
     private bool StorageWritable = true;
     private bool DiskSettingsWritable = true;
@@ -117,10 +118,10 @@ public partial class Home
             await Module.InvokeVoidAsync("initialize", "map", Self, Data.Settings);
             Ready = true;
             if (Status == loadingStatus) Status = "";
-            RenderedPath = null;
+            RenderedPath = null; RenderedAlertAreas = null;
             phase = "map layers";
-            await RenderMap();
             AutomaticWeatherPoint = RouteMidpoint.Find(Data.RouteGeometry);
+            await RenderMap();
             await InvokeAsync(StateHasChanged);
             StartupDiagnostics.Write($"Map ready in {watch.ElapsedMilliseconds} ms; saved items={Data.Places.Count}.");
             StartupContextRefresh = CompleteStartupAsync();
@@ -137,7 +138,7 @@ public partial class Home
     }
     private async Task CompleteStartupAsync()
     {
-        try { await SaveDiskSettings(); await Task.WhenAll(Data.Settings.ShowCivilProtectionAlerts ? RefreshCivilAlertsAsync() : Task.CompletedTask, AutomaticWeatherPoint is not null ? UpdateWeatherAsync() : Task.CompletedTask); }
+        try { await SaveDiskSettings(); await LoadEumetnetAlertsAtStartupAsync(); }
         catch (OperationCanceledException) when (Lifetime.IsCancellationRequested) { }
         catch (JSDisconnectedException) { }
         catch (Exception ex) { StartupDiagnostics.Write("Background startup update failed.", ex); }
@@ -171,12 +172,14 @@ public partial class Home
     {
         Appearances = new(Data.Folders);
         var path = Path;
+        if (LastAlertSnapshot is not null) UpdateEumetnetSummary(LastAlertSnapshot);
+        var alertUpdate = ReferenceEquals(RenderedAlertAreas, AlertAreas) ? null : AlertAreas;
         var draft = Data.RouteKind.StartsWith("Bozza");
         var routeUpdate = ReferenceEquals(RenderedPath, path) && RenderedDraft == draft ? null : path;
         if (Module is not null && Ready)
         {
-            await Module.InvokeVoidAsync("render", Data.Settings, Data.Places.Where(Appearances.IsVisible).Select(MapPlace).ToList(), Data.RoutePoints, routeUpdate, draft, SelectedPlace?.Id, new { webcams = new { loading = L["WebcamsLoading"], unavailable = L["WebcamsUnavailable"], zoomIn = L["WebcamsZoomIn"], empty = L["WebcamsEmpty"] }, gridCardinals = L["MapGridCardinals"].Split(','), gridStep = L["MapGridStep"], gridZoomIn = L["MapGridZoomIn"], gridUnavailable = L["MapGridUnavailable"], addPin = L["MapContextAddPin"], deletePin = L["DeleteButton"], edit = L["MapContextEdit"], save = L["MapContextSave"], cancel = L["CancelButton"], start = L["MapContextSetStart"], waypoint = L["MapContextSetWaypoint"], end = L["MapContextSetEnd"], weather = L["MapContextSetWeatherPoint"], directWaypoint = L["MapContextSetDirectWaypoint"], deleteRoutePoint = L["MapContextDeleteRoutePoint"], name = L["NameLabel"], description = L["DescriptionLabel"], icon = L["IconLabel"], color = L["ColorLabel"], inherit = L["InheritAppearance"], currentColor = L["ColorCurrent"], icons = Icons.Keys.ToDictionary(k => k, k => L["Icon_" + k]), colors = PinColors.ToDictionary(p => p.Key, p => L[p.Value]), weatherReference = L["WeatherReferenceTitle"], cardinals = Data.Settings.LanguageCode == "it-IT" ? new[] { "N", "E", "S", "O" } : new[] { "N", "E", "S", "W" } }, AlertAreas, WeatherPoint);
-            RenderedPath = path; RenderedDraft = draft;
+            await Module.InvokeVoidAsync("render", Data.Settings, Data.Places.Where(Appearances.IsVisible).Select(MapPlace).ToList(), Data.RoutePoints, routeUpdate, draft, SelectedPlace?.Id, new { webcams = new { loading = L["WebcamsLoading"], unavailable = L["WebcamsUnavailable"], zoomIn = L["WebcamsZoomIn"], empty = L["WebcamsEmpty"] }, gridCardinals = L["MapGridCardinals"].Split(','), gridStep = L["MapGridStep"], gridZoomIn = L["MapGridZoomIn"], gridUnavailable = L["MapGridUnavailable"], addPin = L["MapContextAddPin"], deletePin = L["DeleteButton"], edit = L["MapContextEdit"], save = L["MapContextSave"], cancel = L["CancelButton"], start = L["MapContextSetStart"], waypoint = L["MapContextSetWaypoint"], end = L["MapContextSetEnd"], weather = L["MapContextSetWeatherPoint"], directWaypoint = L["MapContextSetDirectWaypoint"], deleteRoutePoint = L["MapContextDeleteRoutePoint"], name = L["NameLabel"], description = L["DescriptionLabel"], icon = L["IconLabel"], color = L["ColorLabel"], inherit = L["InheritAppearance"], currentColor = L["ColorCurrent"], icons = Icons.Keys.ToDictionary(k => k, k => L["Icon_" + k]), colors = PinColors.ToDictionary(p => p.Key, p => L[p.Value]), alertIssued = L["EumetnetAlertIssued"], alertOnset = L["EumetnetAlertOnset"], alertExpires = L["EumetnetAlertExpires"], alertNoExpiry = L["EumetnetAlertNoExpiry"], alertSender = L["EumetnetAlertSender"], alertDisclaimer = EumetnetService.Disclaimer, weatherReference = L["WeatherReferenceTitle"], cardinals = Data.Settings.LanguageCode == "it-IT" ? new[] { "N", "E", "S", "O" } : new[] { "N", "E", "S", "W" } }, alertUpdate, WeatherPoint);
+            RenderedPath = path; RenderedDraft = draft; RenderedAlertAreas = AlertAreas;
         }
     }
     private object MapPlace(SavedPlace place)
@@ -309,8 +312,7 @@ public partial class Home
     private async Task DraftRoute()
     {
         RouteCalculation?.Cancel();
-        WeatherRequest?.Cancel(); AutomaticWeatherPoint = null; WeatherBusy = false;
-        WeatherStatus = L["WeatherInitialPrompt"];
+        ClearTrailContext();
         NormalizeStops();
         using var calculation = CancellationTokenSource.CreateLinkedTokenSource(Lifetime.Token);
         RouteCalculation = calculation;
@@ -332,6 +334,7 @@ public partial class Home
             var path = await Routing.BuildRouteAsync(stops, token);
             token.ThrowIfCancellationRequested();
             Data.RouteGeometry = path;
+            AutomaticWeatherPoint = RouteMidpoint.ApplyWeatherReference(Data);
             Data.RouteKind = stops.Any(p => p.PointType == "DirectWaypoint") ? "Percorso con segmenti diretti" : "Percorso escursionistico";
             await Save();
             token.ThrowIfCancellationRequested();
@@ -339,8 +342,7 @@ public partial class Home
             token.ThrowIfCancellationRequested();
             Status = "Traccia calcolata";
             IsRouting = false;
-            AutomaticWeatherPoint = RouteMidpoint.Find(path);
-            await Task.WhenAll(UpdateWeatherAsync(token), RefreshCivilAlertsAsync(token));
+            await RefreshTrailWeatherAsync(token);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (OperationCanceledException)
@@ -432,9 +434,9 @@ public partial class Home
     {
         Data.Settings.TravelSpeed *= Imperial ? 0.621371 : 1.609344;
         Data.Settings.IsMetric = !Imperial; Data.Settings.DistanceUnit = Imperial ? "mi" : "km"; Data.Settings.AltitudeUnit = Imperial ? "ft" : "m"; Data.Settings.SpeedUnit = Imperial ? "mph" : "km/h"; Data.Settings.TemperatureUnit = Imperial ? "F" : "C";
-        Forecast = null; await ApplySettings();
+        await ApplySettings();
     }
-    private async Task ApplySettings() { L.SetLanguage(Data.Settings.LanguageCode); if (Forecast is null) WeatherStatus = L["WeatherInitialPrompt"]; await Refresh(); await Task.WhenAll(RefreshCivilAlertsAsync(), WeatherPoint is not null ? UpdateWeatherAsync() : Task.CompletedTask); }
+    private async Task ApplySettings() { L.SetLanguage(Data.Settings.LanguageCode); ReformatTrailContext(); await Refresh(); }
     private async Task<StoredApplicationData?> LoadDiskSettings(bool includeLibrary = false)
     {
         try
@@ -517,12 +519,14 @@ public partial class Home
         if (!await JS.InvokeAsync<bool>("confirm", (plan.Kind == ImportKind.FullBackup ? S("RestoreConfirm") : L[plan.Kind == ImportKind.Backup ? "ImportBackupConfirm" : "ImportRouteConfirm"]))) return;
         if (!StorageWritable && !await JS.InvokeAsync<bool>("confirm", L["ImportStorageConfirm"])) return;
         RouteCalculation?.Cancel(); RouteCalculation = null; IsRouting = false; RouteError = "";
-        WeatherRequest?.Cancel(); AlertsRequest?.Cancel();
+        WeatherRequest?.Cancel();
+        if (plan.Kind is ImportKind.Route or ImportKind.FullBackup) ClearTrailContext();
         Data = plan.Data; StorageWritable = true; if (plan.Kind != ImportKind.Route) { DiskSettingsWritable = true; CollapsedFolders.Clear(); }
-        L.SetLanguage(Data.Settings.LanguageCode); SelectedPlace = null; SelectedFolder = null; Forecast = null;
+        L.SetLanguage(Data.Settings.LanguageCode); SelectedPlace = null; SelectedFolder = null;
         AutomaticWeatherPoint = RouteMidpoint.Find(Data.RouteGeometry);
         await Save(); await RenderMap(); if (Path.Count > 0) await FitRoute(); else await Center(Data.Settings.DefaultLatitude, Data.Settings.DefaultLongitude); Dialog = '\0'; Status = L["ImportDone"];
-        await Task.WhenAll(RefreshCivilAlertsAsync(), AutomaticWeatherPoint is not null ? UpdateWeatherAsync() : Task.CompletedTask);
+        if (plan.Kind is ImportKind.Route or ImportKind.FullBackup) await RefreshTrailWeatherAsync();
+        else { ReformatTrailContext(); await RenderMap(); }
     });
     [JSInvokable] public async Task PrepareForUpdate()
     {
@@ -539,8 +543,9 @@ public partial class Home
     public async ValueTask DisposeAsync()
     {
         RouteCalculation?.Cancel(); RouteCalculation = null;
-        WeatherRequest?.Cancel(); AlertsRequest?.Cancel();
-        Lifetime.Cancel(); Lifetime.Dispose();
+        WeatherRequest?.Cancel();
+        Lifetime.Cancel();
+        Lifetime.Dispose();
         try { await StartupContextRefresh.WaitAsync(TimeSpan.FromSeconds(2)); } catch (Exception ex) when (ex is OperationCanceledException or TimeoutException) { }
         if (Module is not null && !HostLifetime.ApplicationStopping.IsCancellationRequested)
         {

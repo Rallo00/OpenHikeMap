@@ -1,0 +1,198 @@
+namespace OpenHikeMap.Models;
+
+public sealed partial class LocalizationService
+{
+    private static void ApplyEumetnetTranslations()
+    {
+        ApplyTranslations("it-IT", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "Non indicata dal servizio",
+            ["ToolbarEumetnetAlerts"] = "Mostra allerte EUMETNET – Meteoalarm",
+            ["SettingsEumetnetAlerts"] = "Attiva allerte EUMETNET – Meteoalarm",
+            ["SettingsUiEumetnetAlerts"] = "Allerte EUMETNET – Meteoalarm",
+            ["EumetnetAlertTitle"] = "Allerte EUMETNET sulla traccia",
+            ["EumetnetAlertNone"] = "Nessuna allerta EUMETNET disponibile per la traccia o il riferimento meteo.",
+            ["EumetnetAlertLoading"] = "Verifica allerte EUMETNET in corso…",
+            ["EumetnetAlertUnavailable"] = "Allerte EUMETNET non disponibili. Impossibile verificare i dati.",
+            ["EumetnetAlertPartial"] = "Copertura incompleta: alcuni avvisi o paesi non sono verificabili. Consulta Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Area fuori dalla copertura dei paesi partecipanti a Meteoalarm.",
+            ["EumetnetAlertInView"] = "Avvisi EUMETNET nell’area visualizzata",
+            ["EumetnetAlertIssued"] = "Emesso",
+            ["EumetnetAlertOnset"] = "Inizio",
+            ["EumetnetAlertExpires"] = "Scadenza",
+            ["EumetnetAlertSender"] = "Servizio emittente",
+            ["EumetnetAlertDisclaimer"] = "Sono possibili ritardi rispetto a Meteoalarm. Consulta il sito per le informazioni più aggiornate pubblicate dai servizi meteorologici e idrologici nazionali partecipanti.",
+        });
+        ApplyTranslations("en-US", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "Not specified by the issuing service",
+            ["ToolbarEumetnetAlerts"] = "Show EUMETNET – Meteoalarm warnings",
+            ["SettingsEumetnetAlerts"] = "Enable EUMETNET – Meteoalarm warnings",
+            ["SettingsUiEumetnetAlerts"] = "EUMETNET – Meteoalarm warnings",
+            ["EumetnetAlertTitle"] = "EUMETNET warnings on the route",
+            ["EumetnetAlertNone"] = "No EUMETNET warnings available for the route or weather reference.",
+            ["EumetnetAlertLoading"] = "Checking EUMETNET warnings…",
+            ["EumetnetAlertUnavailable"] = "EUMETNET warnings unavailable. The data could not be checked.",
+            ["EumetnetAlertPartial"] = "Incomplete coverage: some warnings or countries could not be checked. Consult Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Area outside the coverage of Meteoalarm participating countries.",
+            ["EumetnetAlertInView"] = "EUMETNET warnings in the current view",
+            ["EumetnetAlertIssued"] = "Issued",
+            ["EumetnetAlertOnset"] = "Starts",
+            ["EumetnetAlertExpires"] = "Expires",
+            ["EumetnetAlertSender"] = "Issuing service",
+            ["EumetnetAlertDisclaimer"] = "Delays compared with Meteoalarm are possible. Consult its website for the most up-to-date information published by participating national meteorological and hydrological services.",
+        });
+        ApplyTranslations("fr-FR", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "Non précisée par le service émetteur",
+            ["ToolbarEumetnetAlerts"] = "Afficher les alertes EUMETNET – Meteoalarm",
+            ["SettingsEumetnetAlerts"] = "Activer les alertes EUMETNET – Meteoalarm",
+            ["SettingsUiEumetnetAlerts"] = "Alertes EUMETNET – Meteoalarm",
+            ["EumetnetAlertTitle"] = "Alertes EUMETNET sur le parcours",
+            ["EumetnetAlertNone"] = "Aucune alerte EUMETNET disponible pour le parcours ou le point météo.",
+            ["EumetnetAlertLoading"] = "Vérification des alertes EUMETNET…",
+            ["EumetnetAlertUnavailable"] = "Alertes EUMETNET indisponibles. Les données n’ont pas pu être vérifiées.",
+            ["EumetnetAlertPartial"] = "Couverture incomplète : certaines alertes ou certains pays n’ont pas pu être vérifiés. Consultez Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Zone hors de la couverture des pays participant à Meteoalarm.",
+            ["EumetnetAlertInView"] = "Alertes EUMETNET dans la zone affichée",
+            ["EumetnetAlertIssued"] = "Émis le",
+            ["EumetnetAlertOnset"] = "Début",
+            ["EumetnetAlertExpires"] = "Expiration",
+            ["EumetnetAlertSender"] = "Service émetteur",
+            ["EumetnetAlertDisclaimer"] = "Des retards par rapport à Meteoalarm sont possibles. Consultez son site pour les informations les plus récentes publiées par les services météorologiques et hydrologiques nationaux participants.",
+        });
+        ApplyTranslations("es-ES", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "No indicada por el servicio emisor",
+            ["ToolbarEumetnetAlerts"] = "Mostrar alertas EUMETNET – Meteoalarm",
+            ["SettingsEumetnetAlerts"] = "Activar alertas EUMETNET – Meteoalarm",
+            ["SettingsUiEumetnetAlerts"] = "Alertas EUMETNET – Meteoalarm",
+            ["EumetnetAlertTitle"] = "Alertas EUMETNET en la ruta",
+            ["EumetnetAlertNone"] = "No hay alertas EUMETNET disponibles para la ruta o el punto meteorológico.",
+            ["EumetnetAlertLoading"] = "Comprobando alertas EUMETNET…",
+            ["EumetnetAlertUnavailable"] = "Alertas EUMETNET no disponibles. No se pudieron comprobar los datos.",
+            ["EumetnetAlertPartial"] = "Cobertura incompleta: no se pudieron comprobar algunos avisos o países. Consulta Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Zona fuera de la cobertura de los países participantes en Meteoalarm.",
+            ["EumetnetAlertInView"] = "Alertas EUMETNET en la zona visible",
+            ["EumetnetAlertIssued"] = "Emitido",
+            ["EumetnetAlertOnset"] = "Inicio",
+            ["EumetnetAlertExpires"] = "Caducidad",
+            ["EumetnetAlertSender"] = "Servicio emisor",
+            ["EumetnetAlertDisclaimer"] = "Puede haber retrasos respecto a Meteoalarm. Consulta su sitio para obtener la información más reciente publicada por los servicios meteorológicos e hidrológicos nacionales participantes.",
+        });
+        ApplyTranslations("de-DE", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "Vom herausgebenden Dienst nicht angegeben",
+            ["ToolbarEumetnetAlerts"] = "EUMETNET – Meteoalarm-Warnungen anzeigen",
+            ["SettingsEumetnetAlerts"] = "EUMETNET – Meteoalarm-Warnungen aktivieren",
+            ["SettingsUiEumetnetAlerts"] = "EUMETNET – Meteoalarm-Warnungen",
+            ["EumetnetAlertTitle"] = "EUMETNET-Warnungen auf der Route",
+            ["EumetnetAlertNone"] = "Keine EUMETNET-Warnungen für die Route oder den Wetterreferenzpunkt verfügbar.",
+            ["EumetnetAlertLoading"] = "EUMETNET-Warnungen werden geprüft…",
+            ["EumetnetAlertUnavailable"] = "EUMETNET-Warnungen nicht verfügbar. Die Daten konnten nicht geprüft werden.",
+            ["EumetnetAlertPartial"] = "Unvollständige Abdeckung: Einige Warnungen oder Länder konnten nicht geprüft werden. Prüfen Sie Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Gebiet außerhalb der Abdeckung der an Meteoalarm teilnehmenden Länder.",
+            ["EumetnetAlertInView"] = "EUMETNET-Warnungen im Kartenausschnitt",
+            ["EumetnetAlertIssued"] = "Ausgegeben",
+            ["EumetnetAlertOnset"] = "Beginn",
+            ["EumetnetAlertExpires"] = "Ablauf",
+            ["EumetnetAlertSender"] = "Herausgebender Dienst",
+            ["EumetnetAlertDisclaimer"] = "Verzögerungen gegenüber Meteoalarm sind möglich. Die aktuellsten Informationen der teilnehmenden nationalen Wetter- und Hydrologiedienste finden Sie auf dessen Website.",
+        });
+        ApplyTranslations("nl-NL", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "Niet opgegeven door de uitgevende dienst",
+            ["ToolbarEumetnetAlerts"] = "EUMETNET – Meteoalarm-waarschuwingen tonen",
+            ["SettingsEumetnetAlerts"] = "EUMETNET – Meteoalarm-waarschuwingen inschakelen",
+            ["SettingsUiEumetnetAlerts"] = "EUMETNET – Meteoalarm-waarschuwingen",
+            ["EumetnetAlertTitle"] = "EUMETNET-waarschuwingen op de route",
+            ["EumetnetAlertNone"] = "Geen EUMETNET-waarschuwingen beschikbaar voor de route of het weerreferentiepunt.",
+            ["EumetnetAlertLoading"] = "EUMETNET-waarschuwingen controleren…",
+            ["EumetnetAlertUnavailable"] = "EUMETNET-waarschuwingen niet beschikbaar. De gegevens konden niet worden gecontroleerd.",
+            ["EumetnetAlertPartial"] = "Onvolledige dekking: sommige waarschuwingen of landen konden niet worden gecontroleerd. Raadpleeg Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Gebied buiten de dekking van de deelnemende Meteoalarm-landen.",
+            ["EumetnetAlertInView"] = "EUMETNET-waarschuwingen in het kaartbeeld",
+            ["EumetnetAlertIssued"] = "Uitgegeven",
+            ["EumetnetAlertOnset"] = "Begint",
+            ["EumetnetAlertExpires"] = "Verloopt",
+            ["EumetnetAlertSender"] = "Uitgevende dienst",
+            ["EumetnetAlertDisclaimer"] = "Vertragingen ten opzichte van Meteoalarm zijn mogelijk. Raadpleeg de website voor de meest actuele informatie van de deelnemende nationale meteorologische en hydrologische diensten.",
+        });
+        ApplyTranslations("nb-NO", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "Ikke angitt av utstedende tjeneste",
+            ["ToolbarEumetnetAlerts"] = "Vis EUMETNET – Meteoalarm-varsler",
+            ["SettingsEumetnetAlerts"] = "Aktiver EUMETNET – Meteoalarm-varsler",
+            ["SettingsUiEumetnetAlerts"] = "EUMETNET – Meteoalarm-varsler",
+            ["EumetnetAlertTitle"] = "EUMETNET-varsler langs ruten",
+            ["EumetnetAlertNone"] = "Ingen EUMETNET-varsler tilgjengelig for ruten eller værreferansepunktet.",
+            ["EumetnetAlertLoading"] = "Kontrollerer EUMETNET-varsler…",
+            ["EumetnetAlertUnavailable"] = "EUMETNET-varsler er utilgjengelige. Dataene kunne ikke kontrolleres.",
+            ["EumetnetAlertPartial"] = "Ufullstendig dekning: noen varsler eller land kunne ikke kontrolleres. Se Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Området er utenfor dekningen til landene som deltar i Meteoalarm.",
+            ["EumetnetAlertInView"] = "EUMETNET-varsler i kartutsnittet",
+            ["EumetnetAlertIssued"] = "Utstedt",
+            ["EumetnetAlertOnset"] = "Starter",
+            ["EumetnetAlertExpires"] = "Utløper",
+            ["EumetnetAlertSender"] = "Utstedende tjeneste",
+            ["EumetnetAlertDisclaimer"] = "Forsinkelser sammenlignet med Meteoalarm kan forekomme. Se nettstedet for den nyeste informasjonen fra deltakende nasjonale meteorologiske og hydrologiske tjenester.",
+        });
+        ApplyTranslations("da-DK", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "Ikke angivet af den udstedende tjeneste",
+            ["ToolbarEumetnetAlerts"] = "Vis EUMETNET – Meteoalarm-varsler",
+            ["SettingsEumetnetAlerts"] = "Aktivér EUMETNET – Meteoalarm-varsler",
+            ["SettingsUiEumetnetAlerts"] = "EUMETNET – Meteoalarm-varsler",
+            ["EumetnetAlertTitle"] = "EUMETNET-varsler på ruten",
+            ["EumetnetAlertNone"] = "Ingen EUMETNET-varsler tilgængelige for ruten eller vejreferencepunktet.",
+            ["EumetnetAlertLoading"] = "Kontrollerer EUMETNET-varsler…",
+            ["EumetnetAlertUnavailable"] = "EUMETNET-varsler er ikke tilgængelige. Dataene kunne ikke kontrolleres.",
+            ["EumetnetAlertPartial"] = "Ufuldstændig dækning: nogle varsler eller lande kunne ikke kontrolleres. Se Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Området ligger uden for dækningen af de lande, der deltager i Meteoalarm.",
+            ["EumetnetAlertInView"] = "EUMETNET-varsler i kortudsnittet",
+            ["EumetnetAlertIssued"] = "Udsendt",
+            ["EumetnetAlertOnset"] = "Start",
+            ["EumetnetAlertExpires"] = "Udløber",
+            ["EumetnetAlertSender"] = "Udstedende tjeneste",
+            ["EumetnetAlertDisclaimer"] = "Forsinkelser i forhold til Meteoalarm er mulige. Se hjemmesiden for de nyeste oplysninger fra de deltagende nationale meteorologiske og hydrologiske tjenester.",
+        });
+        ApplyTranslations("sv-SE", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "Inte angiven av utfärdande tjänst",
+            ["ToolbarEumetnetAlerts"] = "Visa EUMETNET – Meteoalarm-varningar",
+            ["SettingsEumetnetAlerts"] = "Aktivera EUMETNET – Meteoalarm-varningar",
+            ["SettingsUiEumetnetAlerts"] = "EUMETNET – Meteoalarm-varningar",
+            ["EumetnetAlertTitle"] = "EUMETNET-varningar längs rutten",
+            ["EumetnetAlertNone"] = "Inga EUMETNET-varningar tillgängliga för rutten eller väderreferenspunkten.",
+            ["EumetnetAlertLoading"] = "Kontrollerar EUMETNET-varningar…",
+            ["EumetnetAlertUnavailable"] = "EUMETNET-varningar är inte tillgängliga. Uppgifterna kunde inte kontrolleras.",
+            ["EumetnetAlertPartial"] = "Ofullständig täckning: vissa varningar eller länder kunde inte kontrolleras. Se Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Området ligger utanför täckningen för de länder som deltar i Meteoalarm.",
+            ["EumetnetAlertInView"] = "EUMETNET-varningar i kartvyn",
+            ["EumetnetAlertIssued"] = "Utfärdad",
+            ["EumetnetAlertOnset"] = "Börjar",
+            ["EumetnetAlertExpires"] = "Upphör",
+            ["EumetnetAlertSender"] = "Utfärdande tjänst",
+            ["EumetnetAlertDisclaimer"] = "Fördröjningar jämfört med Meteoalarm kan förekomma. Se webbplatsen för den senaste informationen från deltagande nationella meteorologiska och hydrologiska tjänster.",
+        });
+        ApplyTranslations("fi-FI", new()
+        {
+            ["EumetnetAlertNoExpiry"] = "Julkaiseva palvelu ei ole ilmoittanut",
+            ["ToolbarEumetnetAlerts"] = "Näytä EUMETNET – Meteoalarm-varoitukset",
+            ["SettingsEumetnetAlerts"] = "Ota EUMETNET – Meteoalarm-varoitukset käyttöön",
+            ["SettingsUiEumetnetAlerts"] = "EUMETNET – Meteoalarm-varoitukset",
+            ["EumetnetAlertTitle"] = "EUMETNET-varoitukset reitillä",
+            ["EumetnetAlertNone"] = "Reitille tai sään viitepisteelle ei ole saatavilla EUMETNET-varoituksia.",
+            ["EumetnetAlertLoading"] = "Tarkistetaan EUMETNET-varoituksia…",
+            ["EumetnetAlertUnavailable"] = "EUMETNET-varoitukset eivät ole saatavilla. Tietoja ei voitu tarkistaa.",
+            ["EumetnetAlertPartial"] = "Kattavuus on puutteellinen: joitakin varoituksia tai maita ei voitu tarkistaa. Katso Meteoalarm.",
+            ["EumetnetAlertNoCoverage"] = "Alue ei kuulu Meteoalarmiin osallistuvien maiden kattavuuteen.",
+            ["EumetnetAlertInView"] = "EUMETNET-varoitukset karttanäkymässä",
+            ["EumetnetAlertIssued"] = "Julkaistu",
+            ["EumetnetAlertOnset"] = "Alkaa",
+            ["EumetnetAlertExpires"] = "Päättyy",
+            ["EumetnetAlertSender"] = "Julkaiseva palvelu",
+            ["EumetnetAlertDisclaimer"] = "Viiveet Meteoalarmiin verrattuna ovat mahdollisia. Katso osallistuvien kansallisten sää- ja vesipalvelujen ajantasaisimmat tiedot verkkosivustolta.",
+        });
+    }
+}

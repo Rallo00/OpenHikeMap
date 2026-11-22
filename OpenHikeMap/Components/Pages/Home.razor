@@ -7,7 +7,7 @@
 @inject WeatherService Weather
 @inject GpxService Gpx
 @inject ILogger<Home> Logger
-@inject CivilProtectionService CivilProtection
+@inject EumetnetService Eumetnet
 @inject AppSettingsStore SettingsStore
 @inject IConfiguration Configuration
 @inject Microsoft.Extensions.Hosting.IHostApplicationLifetime HostLifetime
@@ -27,7 +27,7 @@
         <button class="tool-icon @(Data.Settings.ShowHikingTrails ? "active" : "")" title="@L["TrailsOverlay"]" aria-label="@L["TrailsOverlay"]" @onclick="ToggleTrails"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="19" r="3" /><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /><circle cx="18" cy="5" r="3" /></svg></button>
         <button class="tool-icon @(Data.Settings.ShowSatelliteOverlay ? "active" : "")" title="@L["SatelliteOverlay"]" aria-label="@L["SatelliteOverlay"]" @onclick="ToggleSatellite"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></svg></button>
         <button class="tool-icon @(Data.Settings.ShowContourLines ? "active" : "")" title="@L["ContoursOverlay"]" aria-label="@L["ContoursOverlay"]" @onclick="ToggleContours"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 4 8 5-5 5 15H2L8 3z" /></svg></button>
-        <button class="tool-icon @(Data.Settings.ShowCivilProtectionAlerts ? "active" : "")" title="@L["ToolbarCivilAlerts"]" aria-label="@L["ToolbarCivilAlerts"]" aria-pressed="@Data.Settings.ShowCivilProtectionAlerts" @onclick="ToggleCivilAlerts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2zM12 15h.01M12 7v4"/></svg></button>
+        <button class="tool-icon @(Data.Settings.ShowEumetnetAlerts ? "active" : "")" title="@L["ToolbarEumetnetAlerts"]" aria-label="@L["ToolbarEumetnetAlerts"]" aria-pressed="@Data.Settings.ShowEumetnetAlerts" @onclick="ToggleEumetnetAlerts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2zM12 15h.01M12 7v4"/></svg></button>
         <button class="tool-icon @(Data.Settings.ShowBearingCircle ? "active" : "")" title="@L["ToolbarBearingCircle"]" aria-label="@L["ToolbarBearingCircle"]" aria-pressed="@Data.Settings.ShowBearingCircle" @onclick="ToggleBearing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2A10 10 0 1 0 12 22A10 10 0 1 0 12 2M22 12h-4M6 12H2M12 6V2M12 22v-4"/></svg></button>
         <button class="tool-icon @(Data.Settings.ShowMapScale ? "active" : "")" title="Scala mappa" aria-label="Scala mappa" @onclick="ToggleScale"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.3 15.3A2.4 2.4 0 0 1 21.3 18.7L18.7 21.3A2.4 2.4 0 0 1 15.3 21.3L2.7 8.7A2.41 2.41 0 0 1 2.7 5.3L5.3 2.7A2.41 2.41 0 0 1 8.7 2.7Z" /><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2" /></svg></button>
         <button class="tool-icon @(Data.Settings.ShowSavedPoints ? "active" : "")" title="@L["ToolbarShowSaved"]" aria-label="@L["ToolbarShowSaved"]" @onclick="ToggleSavedPoints"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" /></svg></button>
@@ -102,8 +102,8 @@
                 @if (IsRouting) { <p class="subtle" role="status">@L["RouteCalculating"]</p> }
                 @if (!string.IsNullOrEmpty(RouteError)) { <p role="alert" style="color:#b53e35;overflow-wrap:anywhere;margin:8px 0">@RouteError</p> }
             </section>
-            <section class="weather"><div class="section-title"><h3>@L["WeatherGroup"]</h3><button disabled="@WeatherBusy" @onclick="LoadWeather">@L["RefreshButton"]</button></div>
-                @if (Data.Settings.ShowCivilProtectionAlerts && !string.IsNullOrEmpty(CivilAlertSummary)) { <p class="civil-alert-summary" role="status">@CivilAlertSummary</p> }
+            <section class="weather"><div class="section-title"><h3>@L["WeatherGroup"]</h3><button disabled="@(WeatherBusy || WeatherPoint is null)" @onclick="LoadWeather">@L["RefreshButton"]</button></div>
+                @if (Data.Settings.ShowEumetnetAlerts && !string.IsNullOrEmpty(EumetnetAlertSummary)) { <p class="eumetnet-alert-summary" role="status">@EumetnetAlertSummary</p><p class="eumetnet-alert-notice">@L["EumetnetAlertDisclaimer"] <a href="https://meteoalarm.org/" target="_blank" rel="noopener noreferrer">EUMETNET – Meteoalarm</a></p> }
                 @if (Forecast is not null)
                 {
                     <p class="subtle">@L["WeatherUpdated"]: @Forecast.UpdatedLabel</p>
@@ -168,7 +168,7 @@
                 <label>@S("DefaultMap")<select @bind="Data.Settings.MapStyle" @bind:after="RefreshSettingsPreferences">@foreach (var style in MapStyles) { <option>@style</option> }</select></label>
                 <div class="settings-overlays">
             <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowBearingCircle" @bind:after="RefreshSettingsPreferences" /> @S("Bearing")</label>
-            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowCivilProtectionAlerts" @bind:after="ApplySettingsPreferences" /> @S("CivilAlerts")</label>
+            <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowEumetnetAlerts" @bind:after="ApplySettingsPreferences" /> @S("EumetnetAlerts")</label>
             <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowHikingTrails" @bind:after="RefreshSettingsPreferences" /> @S("Trails")</label>
             <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowSatelliteOverlay" @bind:after="RefreshSettingsPreferences" /> @S("Satellite")</label>
             <label class="toggle"><input type="checkbox" @bind="Data.Settings.ShowContourLines" @bind:after="RefreshSettingsPreferences" /> @S("Contours")</label>
@@ -219,7 +219,7 @@
             <div class="two-col"><label>Latitudine<input type="number" step="any" @bind="CoordinateLat" /></label><label>Longitudine<input type="number" step="any" @bind="CoordinateLon" /></label></div>
             <button class="primary wide" @onclick="AddCoordinates">Aggiungi</button>
         }
-        else { <div class="section-kicker">PRONTO PER ESPLORARE</div><h2>OpenHikeMap</h2><p>Applicazione Windows per consultare mappe, gestire luoghi, pianificare tracce e visualizzare profilo altimetrico e meteo.</p><p>Mappe © OpenStreetMap contributors; rilievo OpenTopoMap, sentieri Waymarked Trails, immagini Esri, meteo Open-Meteo. Libreria Leaflet inclusa con licenza BSD-2-Clause. Codice del progetto sotto GPL-3.0.</p><p>Le linee tratteggiate rappresentano una bozza diretta. Il calcolo sui sentieri dipende dalla configurazione del servizio cartografico.</p><p>I dati sono conservati nel profilo locale dell’applicazione. Usa il backup per trasferirli su altri dispositivi.</p> }
+        else { <div class="section-kicker">PRONTO PER ESPLORARE</div><h2>OpenHikeMap</h2><p>Applicazione Windows per consultare mappe, gestire luoghi, pianificare tracce e visualizzare profilo altimetrico e meteo.</p><p>Mappe © OpenStreetMap contributors; rilievo OpenTopoMap, sentieri Waymarked Trails, immagini Esri, meteo Open-Meteo, allerte EUMETNET – Meteoalarm e servizi meteorologici nazionali (CC BY 4.0). Libreria Leaflet inclusa con licenza BSD-2-Clause. Codice del progetto sotto GPL-3.0.</p><p>Le linee tratteggiate rappresentano una bozza diretta. Il calcolo sui sentieri dipende dalla configurazione del servizio cartografico.</p><p>I dati sono conservati nel profilo locale dell’applicazione. Usa il backup per trasferirli su altri dispositivi.</p> }
         <p class="modal-status" role="status">@(Dialog == 's' ? (string.IsNullOrEmpty(SettingsFeedbackKey) ? "" : S(SettingsFeedbackKey)) : Status)</p>
     </section></div>
 }

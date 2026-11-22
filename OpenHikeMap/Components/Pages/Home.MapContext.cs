@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.JSInterop;
 using OpenHikeMap.Models;
 using OpenHikeMap.Services;
@@ -6,25 +7,63 @@ namespace OpenHikeMap.Components.Pages;
 
 public partial class Home
 {
-    private CancellationTokenSource? WeatherRequest, AlertsRequest;
+    private CancellationTokenSource? WeatherRequest;
     private bool WeatherBusy;
-    private List<CivilAlertArea> AlertAreas = [];
-    private string CivilAlertSummary = "";
+    private List<EumetnetAlertArea> AlertAreas = [];
+    private string EumetnetAlertSummary = "";
     private RoutePathPoint? AutomaticWeatherPoint;
     private RoutePathPoint? WeatherPoint => Data.Settings.WeatherReferenceLatitude is { } lat && Data.Settings.WeatherReferenceLongitude is { } lon
         ? new RoutePathPoint { Latitude = lat, Longitude = lon } : AutomaticWeatherPoint;
 
     private async Task ToggleBearing() { Data.Settings.ShowBearingCircle = !Data.Settings.ShowBearingCircle; await Refresh(); }
-    private async Task ToggleCivilAlerts()
+    private async Task ToggleEumetnetAlerts()
     {
-        Data.Settings.ShowCivilProtectionAlerts = !Data.Settings.ShowCivilProtectionAlerts;
+        Data.Settings.ShowEumetnetAlerts = !Data.Settings.ShowEumetnetAlerts;
         await Save();
-        await RefreshCivilAlertsAsync();
+        ReformatTrailContext();
+        await RenderMap();
     }
 
-    private async Task LoadWeather() => await UpdateWeatherAsync();
+    private Task LoadWeather() => RefreshTrailWeatherAsync(force: true);
 
-    private async Task UpdateWeatherAsync(CancellationToken parent = default)
+    private async Task RefreshTrailWeatherAsync(CancellationToken token = default, bool force = false)
+    {
+        if (WeatherPoint is null) return;
+        if (LastAlertSnapshot is not null) UpdateEumetnetSummary(LastAlertSnapshot);
+        await RenderMap();
+        await UpdateWeatherAsync(token, force);
+    }
+
+    private EumetnetAlertSnapshot? LastAlertSnapshot;
+
+    private void ClearTrailContext()
+    {
+        WeatherRequest?.Cancel();
+        AutomaticWeatherPoint = null; Forecast = null; WeatherBusy = false;
+        EumetnetAlertSummary = "";
+        WeatherStatus = L["WeatherInitialPrompt"];
+    }
+
+    private void ReformatTrailContext()
+    {
+        if (Forecast is not null)
+            Forecast = Weather.FormatCachedForecast(Data.Settings.LanguageCode, !Imperial, Data.Settings.TemperatureUnit);
+        if (LastAlertSnapshot is not null) UpdateEumetnetSummary(LastAlertSnapshot);
+        if (Forecast is null) WeatherStatus = L["WeatherInitialPrompt"];
+    }
+
+    private void UpdateEumetnetSummary(EumetnetAlertSnapshot snapshot)
+    {
+        if (Path.Count == 0 && WeatherPoint is null) { EumetnetAlertSummary = ""; return; }
+        var matching = EumetnetAlertSelection.ForRoute(AlertAreas, Path, WeatherPoint, DateTimeOffset.UtcNow);
+        EumetnetAlertSummary = snapshot.RequestedCountries == 0 ? L["EumetnetAlertNoCoverage"]
+            : snapshot.FailedCountries == snapshot.RequestedCountries ? L["EumetnetAlertUnavailable"]
+            : matching.Count > 0 ? $"{L["EumetnetAlertTitle"]}:\n\n{string.Join("\n\n────────────────────\n\n", matching.Select(FormatEumetnetWarning))}"
+            : snapshot.IsComplete ? L["EumetnetAlertNone"] : L["EumetnetAlertPartial"];
+        if (!snapshot.IsComplete && matching.Count > 0) EumetnetAlertSummary += "\n" + L["EumetnetAlertPartial"];
+    }
+
+    private async Task UpdateWeatherAsync(CancellationToken parent = default, bool force = false)
     {
         WeatherRequest?.Cancel();
         using var request = CancellationTokenSource.CreateLinkedTokenSource(Lifetime.Token, parent);
@@ -34,14 +73,12 @@ public partial class Home
         try
         {
             var point = WeatherPoint;
-            if (point is null)
-            {
-                var center = Ready && Module is not null ? await Module.InvokeAsync<double[]>("getCenter") : [Data.Settings.DefaultLatitude, Data.Settings.DefaultLongitude];
-                point = new RoutePathPoint { Latitude = center[0], Longitude = center[1] };
-            }
+            if (point is null) { WeatherStatus = L["WeatherInitialPrompt"]; return; }
             await RenderMap();
             await InvokeAsync(StateHasChanged);
-            var forecast = await Weather.GetForecastAsync(point.Latitude, point.Longitude, Data.Settings.LanguageCode, !Imperial, Data.Settings.TemperatureUnit, token);
+            var forecast = force ? null : Weather.FormatCachedForecastForPoint(point.Latitude, point.Longitude,
+                Data.Settings.LanguageCode, !Imperial, Data.Settings.TemperatureUnit);
+            forecast ??= await Weather.GetForecastAsync(point.Latitude, point.Longitude, Data.Settings.LanguageCode, !Imperial, Data.Settings.TemperatureUnit, token);
             token.ThrowIfCancellationRequested();
             Forecast = forecast;
             WeatherStatus = forecast is null ? L["WeatherUnavailable"] : "";
@@ -65,49 +102,46 @@ public partial class Home
         }
     }
 
-    private async Task RefreshCivilAlertsAsync(CancellationToken parent = default)
+    private string FormatEumetnetWarning(EumetnetAlertArea area)
     {
-        AlertsRequest?.Cancel();
-        using var request = CancellationTokenSource.CreateLinkedTokenSource(Lifetime.Token, parent);
-        AlertsRequest = request;
-        var token = request.Token;
+        var culture = CultureInfo.GetCultureInfo(Data.Settings.LanguageCode);
+        string Date(DateTimeOffset value) => value.ToLocalTime().ToString("G", culture);
+        return string.Join("\n\n", new[]
+        {
+            $"{area.Name}: {area.Event}",
+            area.Details,
+            $"{L["EumetnetAlertSender"]}: {area.Sender}",
+            $"{L["EumetnetAlertIssued"]}: {Date(area.Issued)}",
+            $"{L["EumetnetAlertOnset"]}: {Date(area.Onset)}",
+            $"{L["EumetnetAlertExpires"]}: {(area.Expires is { } expires ? Date(expires) : L["EumetnetAlertNoExpiry"])}"
+        });
+    }
+
+    private async Task LoadEumetnetAlertsAtStartupAsync()
+    {
+        var token = Lifetime.Token;
         try
         {
-            if (!Data.Settings.ShowCivilProtectionAlerts) { AlertAreas = []; CivilAlertSummary = ""; }
-            else
-            {
-                CivilAlertSummary = L["CivilAlertLoading"];
-                await InvokeAsync(StateHasChanged);
-                var areas = await CivilProtection.GetAreasAsync(token);
-                token.ThrowIfCancellationRequested();
-                AlertAreas = areas;
-                var reference = Data.RouteGeometry.Count > 1 ? Data.RouteGeometry : WeatherPoint is { } point ? new List<RoutePathPoint> { point } : [];
-                var matching = areas.Where(a => CivilProtectionService.Intersects(a, reference)).ToList();
-                CivilAlertSummary = matching.Count > 0
-                    ? $"{L["CivilAlertTitle"]}: {string.Join(" | ", matching.Select(a => $"{a.Name}: {a.Details}"))}"
-                    : L["CivilAlertNone"];
-            }
+            EumetnetAlertSummary = L["EumetnetAlertLoading"];
+            await InvokeAsync(StateHasChanged);
+            var snapshot = await Eumetnet.LoadAllOnceAsync(Data.Settings.LanguageCode, HostLifetime.ApplicationStopping).WaitAsync(token);
             token.ThrowIfCancellationRequested();
+            AlertAreas = snapshot.Areas; LastAlertSnapshot = snapshot;
+            UpdateEumetnetSummary(snapshot);
             await RenderMap();
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (token.IsCancellationRequested || HostLifetime.ApplicationStopping.IsCancellationRequested) { }
         catch (Exception ex)
         {
             if (!token.IsCancellationRequested)
             {
-                AlertAreas = [];
-                CivilAlertSummary = L["CivilAlertUnavailable"];
-                Logger.LogWarning("Allerte SNPC-IT non disponibili: {Reason}", ex.Message);
-                await RenderMap();
+                EumetnetAlertSummary = L["EumetnetAlertUnavailable"];
+                Logger.LogWarning("EUMETNET startup warning load failed: {Reason}", ex.Message);
             }
         }
         finally
         {
-            if (ReferenceEquals(AlertsRequest, request))
-            {
-                AlertsRequest = null;
-                if (!Lifetime.IsCancellationRequested) await InvokeAsync(StateHasChanged);
-            }
+            if (!token.IsCancellationRequested) await InvokeAsync(StateHasChanged);
         }
     }
 }

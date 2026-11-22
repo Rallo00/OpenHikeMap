@@ -1,6 +1,7 @@
+let showEumetnetAlerts = false, cachedAlertAreas = [], alertLanguage = null;
 import { ReferenceGrid } from './reference-grid.js';
 import { WebcamOverlay } from './webcams.js';
-let map, bridge, base, layers, markers, routeMarkers, routeLine, scale, bearing, resizeObserver, civilAlerts, referenceGrid;
+let map, bridge, base, layers, markers, routeMarkers, routeLine, scale, bearing, resizeObserver, eumetnetAlerts, referenceGrid;
 let mode = 'explore', rulerStart, ruler, popup, weatherMarker, unitPreset = 'Metric';
 let leafletLoader, searchEvents, renderedStops = '';
 let placesById = new Map(), markersByPlaceId = new Map();
@@ -97,8 +98,9 @@ export async function initialize(id, dotnet, settings) {
     base.addTo(map);
     markers = L.layerGroup().addTo(map);
     routeMarkers = L.layerGroup().addTo(map);
-    map.createPane('civilAlerts'); map.getPane('civilAlerts').style.zIndex = 410;
-    civilAlerts = L.layerGroup().addTo(map);
+    map.createPane('eumetnetAlerts'); map.getPane('eumetnetAlerts').style.zIndex = 410;
+    eumetnetAlerts = L.layerGroup().addTo(map);
+    map.createPane('weatherReference'); map.getPane('weatherReference').style.zIndex = 640;
     map.on('click', event => {
         if (mode === 'ruler') { measure(event.latlng); return; }
         if (mode !== 'explore') call('MapClick', event.latlng.lat, event.latlng.lng, mode);
@@ -165,9 +167,10 @@ export function setMode(value) {
     if (ruler) { map.removeLayer(ruler); ruler = null; }
     map.getContainer().style.cursor = value === 'explore' ? '' : 'crosshair';
 }
-export function render(settings, places, stops, path, draft, selectedId, labels, alertAreas = [], weatherPoint = null) {
+export function render(settings, places, stops, path, draft, selectedId, labels, alertAreas = null, weatherPoint = null) {
     if (!map || !layers) return;
     contextLabels = { ...contextLabels, ...labels };
+    renderWeatherPoint(weatherPoint);
     const next = layers[settings.mapStyle] || layers.OpenStreetMap;
     if (base !== next) { if (base) map.removeLayer(base); base = next; base.addTo(map); }
     for (const [name, enabled] of [['satellite', settings.showSatelliteOverlay], ['trails', settings.showHikingTrails], ['contours', settings.showContourLines]]) {
@@ -214,22 +217,46 @@ export function render(settings, places, stops, path, draft, selectedId, labels,
     if (!settings.showBearingCircle) { bearing?.remove(); bearing = null; }
     else if (!bearing) { bearing = document.createElement('div'); bearing.className = 'bearing-overlay'; bearing.setAttribute('aria-hidden', 'true'); map.getContainer().append(bearing); }
     drawBearing();
-    civilAlerts.clearLayers();
-    if (settings.showCivilProtectionAlerts) for (const area of alertAreas) {
-        const content = document.createElement('article'); content.className = 'civil-alert-popup';
+    const alertsChanged = Array.isArray(alertAreas);
+    if (alertsChanged) cachedAlertAreas = alertAreas;
+    const nextShowAlerts = Boolean(settings.showEumetnetAlerts);
+    if (alertsChanged || nextShowAlerts !== showEumetnetAlerts || alertLanguage !== settings.languageCode) {
+      eumetnetAlerts.clearLayers();
+      showEumetnetAlerts = nextShowAlerts; alertLanguage = settings.languageCode;
+      if (showEumetnetAlerts) for (const area of cachedAlertAreas) {
+        if (area.expires && Date.parse(area.expires) <= Date.now()) continue;
+        const content = document.createElement('article'); content.className = 'eumetnet-alert-popup';
         const title = document.createElement('strong'); title.textContent = area.name; content.append(title);
         const detail = document.createElement('p'); detail.textContent = area.details; content.append(detail);
-        const source = document.createElement('a'); source.href = 'https://mappe.protezionecivile.gov.it/it/mappe-rischi/bollettino-di-criticita/index.html'; source.target = '_blank'; source.rel = 'noopener'; source.textContent = 'SNPC-IT · Protezione Civile'; content.append(source);
+        const issuer = document.createElement('p'); issuer.textContent = `${labels.alertSender}: ${area.sender}`; content.append(issuer);
+        for (const [label, value] of [[labels.alertIssued, area.issued], [labels.alertOnset, area.onset], [labels.alertExpires, area.expires]]) {
+            const time = document.createElement('p'); time.textContent = `${label}: ${value ? new Date(value).toLocaleString(settings.languageCode) : labels.alertNoExpiry}`; content.append(time);
+        }
+        const source = document.createElement('a'); source.href = 'https://meteoalarm.org/'; source.target = '_blank'; source.rel = 'noopener noreferrer'; source.textContent = 'EUMETNET – Meteoalarm'; content.append(source);
+        const notice = document.createElement('p'); notice.className = 'eumetnet-alert-notice'; notice.textContent = labels.alertDisclaimer; content.append(notice);
         L.polygon(area.polygons.map(rings => rings.map(ring => ring.map(p => [p.latitude, p.longitude]))), {
-            pane: 'civilAlerts', color: area.severity >= 3 ? '#C62828' : '#EF6C00', weight: 2, fillOpacity: .12, bubblingMouseEvents: false,
-            attribution: 'Confini: <a href="https://github.com/openpolis/geojson-italy">Openpolis</a> · Allerte: Protezione Civile'
-        }).bindTooltip(area.name).bindPopup(content, { className: 'openhikemap-context', maxWidth: 380 }).addTo(civilAlerts);
+            pane: 'eumetnetAlerts', color: area.severity >= 4 ? '#C62828' : area.severity >= 3 ? '#EF6C00' : '#C49A00', weight: 2, fillOpacity: .12, bubblingMouseEvents: false,
+            attribution: '<a href="https://meteoalarm.org/">EUMETNET – Meteoalarm</a> · CC BY 4.0'
+        }).bindTooltip(`${area.name}: ${area.event}`).bindPopup(content, { className: 'openhikemap-context', maxWidth: 380 }).addTo(eumetnetAlerts);
     }
-    if (weatherMarker) { map.removeLayer(weatherMarker); weatherMarker = null; }
-    if (weatherPoint) {
+    }
+}
+function renderWeatherPoint(point) {
+    if (!point) {
+        if (weatherMarker) { map.removeLayer(weatherMarker); weatherMarker = null; }
+        return;
+    }
+    if (!weatherMarker) {
         const html = '<div class="map-pin weather-reference"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2m-7.07.93 1.41 1.41M20 12h2m-2.93-7.07-1.41 1.41M15.947 12.65a4 4 0 0 0-5.925-4.128M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/></svg></div>';
-        weatherMarker = L.marker([weatherPoint.latitude, weatherPoint.longitude], { icon: L.divIcon({ html, className: 'openhikemap-marker', iconSize: [40, 52], iconAnchor: [20, 50] }) }).bindTooltip(contextLabels.weatherReference || 'Riferimento meteo').addTo(map);
-    }
+        weatherMarker = L.marker([point.latitude, point.longitude], {
+            icon: L.divIcon({ html, className: 'openhikemap-marker', iconSize: [40, 52], iconAnchor: [20, 50] }),
+            pane: 'weatherReference', zIndexOffset: 1000, draggable: true, riseOnHover: true
+        }).on('dragend', event => {
+            const location = event.target.getLatLng();
+            call('MapAction', location.lat, location.lng, 'weather', '', -1);
+        }).addTo(map);
+    } else weatherMarker.setLatLng([point.latitude, point.longitude]);
+    weatherMarker.bindTooltip(contextLabels.weatherReference || 'Riferimento meteo', { direction: 'top', offset: [0, -42] });
 }
 function visibleMapBounds() {
     const bounds = map.getContainer().getBoundingClientRect(), library = document.querySelector('.library')?.getBoundingClientRect(), details = document.querySelector('.details')?.getBoundingClientRect();
@@ -316,6 +343,7 @@ export function download(filename, content, mime) {
     const link = document.createElement('a'); link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function dispose(clearUpdateHook = true) {
+    showEumetnetAlerts = false; cachedAlertAreas = []; alertLanguage = null;
     if (clearUpdateHook) delete globalThis.openHikeMapSaveForUpdate;
     renderedStops = ''; placesById.clear(); markersByPlaceId.clear();
     searchEvents?.abort(); searchEvents = null;
@@ -324,6 +352,6 @@ export function dispose(clearUpdateHook = true) {
     referenceGrid?.dispose(); referenceGrid = null;
     webcams?.dispose(); webcams = null;
     if (map) map.remove();
-    map = bridge = base = layers = markers = routeMarkers = routeLine = scale = bearing = ruler = popup = weatherMarker = resizeObserver = civilAlerts = null;
+    map = bridge = base = layers = markers = routeMarkers = routeLine = scale = bearing = ruler = popup = weatherMarker = resizeObserver = eumetnetAlerts = null;
     mode = 'explore'; rulerStart = null;
 }
