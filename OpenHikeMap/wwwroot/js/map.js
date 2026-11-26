@@ -6,21 +6,15 @@ let mode = 'explore', rulerStart, ruler, popup, weatherMarker, unitPreset = 'Met
 let leafletLoader, searchEvents, renderedStops = '';
 let placesById = new Map(), markersByPlaceId = new Map();
 let webcams;
-let terrainView, lastRender, terrainRequest = 0;
+let terrainView, lastRender, terrainRequest = 0, decorationFrame = 0, rulerFrame = 0, rulerPoint;
 let contextLabels = { addPin: 'Aggiungi pin', deletePin: 'Elimina', edit: 'Modifica elemento', save: 'Salva modifiche', cancel: 'Annulla', start: 'Imposta come punto di partenza', waypoint: 'Imposta come waypoint', end: 'Imposta come punto di arrivo', weather: 'Imposta come punto di calcolo meteo', directWaypoint: 'Imposta come waypoint diretto', deleteRoutePoint: 'Elimina punto traccia', name: 'Nome', description: 'Descrizione', icon: 'Icona', color: 'Colore pin' };
 const storageKey = 'openhikemap.web.session.v1';
 const routeStorageKey = 'openhikemap.web.route.v1';
 const iconFiles = { poi: 'mountain', bivouac: 'house_with_flag', fountain: 'water_tap_with_droplet', food: 'fork_and_knife', paid_hut: 'campsite_with_euro', single_tent: 'campsite', tent_area: 'campsites', parking: 'p_wide', cable_car: 'aerial_tram', hammocks: 'conifer_tree_beside_conifer_tree', waterfall: 'waterfall', water: 'waters', summit_cross: 'latin_cross_on_square' };
 const color = value => /^#[\da-f]{6}$/i.test(value || '') ? value : '#D65A5A';
 const call = (...args) => bridge?.invokeMethodAsync(...args).catch(() => {});
-const placePopup = place => {
-    const content = document.createElement('article'); content.className = 'place-popup';
-    const title = document.createElement('strong'); title.textContent = place.name || 'Punto salvato'; content.append(title);
-    if (place.description) { const description = document.createElement('p'); description.textContent = place.description; content.append(description); }
-    const coordinates = document.createElement('small'); coordinates.textContent = `${Number(place.latitude).toFixed(5)}, ${Number(place.longitude).toFixed(5)}`; content.append(coordinates);
-    return content;
-};
-
+function scheduleDecorations() { if (!decorationFrame) decorationFrame = requestAnimationFrame(() => { decorationFrame = 0; drawBearing(); if (terrainView) terrainView.updateScale(); else updateModernScale(); }); }
+function scheduleRuler(point) { rulerPoint = point; if (!rulerFrame) rulerFrame = requestAnimationFrame(() => { rulerFrame = 0; renderRuler(rulerPoint); }); }
 export function readStorageStream(includeLibrary) {
     const route = localStorage.getItem(routeStorageKey);
     const legacy = includeLibrary || !route ? localStorage.getItem(storageKey) : null;
@@ -107,9 +101,9 @@ export async function initialize(id, dotnet, settings) {
         if (mode !== 'explore') call('MapClick', event.latlng.lat, event.latlng.lng, mode);
     });
     map.on('contextmenu', event => openMapContext(event.latlng));
-    map.on('move zoom', () => { drawBearing(); updateModernScale(); });
-    map.on('mousemove', event => { if (mode === 'ruler' && rulerStart) renderRuler(event.latlng); });
-    resizeObserver = new ResizeObserver(() => { map?.invalidateSize(); terrainView?.resize(); drawBearing(); updateModernScale(); referenceGrid?.schedule(); webcams?.schedule(); });
+    map.on('move zoom', scheduleDecorations);
+    map.on('mousemove', event => { if (mode === 'ruler' && rulerStart) scheduleRuler(event.latlng); });
+    resizeObserver = new ResizeObserver(() => { map?.invalidateSize(); terrainView?.resize(); scheduleDecorations(); referenceGrid?.schedule(); webcams?.schedule(); });
     resizeObserver.observe(container);
     const library = document.querySelector('.library'); if (library) resizeObserver.observe(library);
     const profile = document.querySelector('.elevation-panel'); if (profile) resizeObserver.observe(profile);
@@ -277,6 +271,8 @@ function visibleMapBounds() {
 function drawBearing() {
     if (!map || !bearing) return;
     const {left, right, height} = visibleMapBounds(), cx = (left + right) / 2, cy = height / 2, radius = Math.max(45, Math.min(right - left, height) * .34);
+    const signature = [left, right, height, terrainView?.map.getBearing() || 0, ...(contextLabels.cardinals || [])].join('|');
+    if (bearing._shape === signature) return; bearing._shape = signature;
     let svg = `<circle cx="${cx}" cy="${cy}" r="${radius}"/>`;
     for (let degrees = 0; degrees < 360; degrees += 15) {
         const angle = (degrees - 90 - (terrainView?.map.getBearing() || 0)) * Math.PI / 180, major = degrees % 30 === 0, inner = radius - (major ? 14 : 8);
@@ -326,16 +322,19 @@ function azimuth(start, end) {
 function formatRulerDistance(meters) { return unitPreset === 'Imperial' ? (meters * 3.28084 >= 5280 ? `${(meters / 1609.344).toFixed(1)} mi` : `${Math.round(meters * 3.28084)} ft`) : meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${Math.round(meters)} m`; }
 function renderRuler(point) {
     if (!map || !rulerStart) return;
-    if (ruler) map.removeLayer(ruler);
-    ruler = globalThis.L.polyline([rulerStart, point], { color: '#1f6feb', weight: 3, dashArray: '7 6' }).addTo(map);
-    ruler.bindTooltip(`${formatRulerDistance(map.distance(rulerStart, point))} | ${Math.round(azimuth(rulerStart, point))}°`, { permanent: true, direction: 'top', className: 'ruler-label' }).openTooltip();
-    terrainView?.setRuler([rulerStart, point], `${formatRulerDistance(map.distance(rulerStart, point))} | ${Math.round(azimuth(rulerStart, point))}°`);
+    const text = `${formatRulerDistance(map.distance(rulerStart, point))} | ${Math.round(azimuth(rulerStart, point))}°`;
+    if (terrainView) { terrainView.setRuler([rulerStart, point], text); return; }
+    if (ruler?.setLatLngs) ruler.setLatLngs([rulerStart, point]);
+    else { if (ruler) map.removeLayer(ruler); ruler = L.polyline([rulerStart, point], { color: '#1f6feb', weight: 3, dashArray: '7 6' }).addTo(map); }
+    if (ruler.getTooltip()) ruler.setTooltipContent(text);
+    else ruler.bindTooltip(text, { permanent: true, direction: 'top', className: 'ruler-label' });
+    ruler.openTooltip();
 }
 function measure(point) {
     if (!rulerStart) {
         if (ruler) map.removeLayer(ruler);
         rulerStart = point;
-        ruler = globalThis.L.circleMarker(point, { radius: 5, color: '#1f6feb', fillOpacity: 1 }).addTo(map);
+        ruler = terrainView ? null : L.circleMarker(point, { radius: 5, color: '#1f6feb', fillOpacity: 1 }).addTo(map);
     } else {
         renderRuler(point);
         rulerStart = null;
@@ -361,7 +360,7 @@ export async function set3D(enabled) {
         const { createTerrainMap } = await import('./terrain-map.js');
         const view = await createTerrainMap(container, { lat: center.lat, lng: center.lng, zoom: Math.max(0, map.getZoom() - 1), style: lastRender.settings.mapStyle }, {
             click: point => { if (mode === 'ruler') measure(point); else if (mode !== 'explore') call('MapClick', point.lat, point.lng, mode); },
-            context: point => openMapContext(point), mousemove: point => { if (mode === 'ruler' && rulerStart) renderRuler(point); }, move: () => drawBearing(),
+            context: point => openMapContext(point), mousemove: point => { if (mode === 'ruler' && rulerStart) scheduleRuler(point); }, move: scheduleDecorations,
             place: (place, point) => { call('PinSelected', place.id); openMapContext(point, place.name, -1, place); },
             stop: (stop, index, point) => openMapContext(point, stop.name, index), weather: point => call('MapAction', point.lat, point.lng, 'weather', '', -1),
             placeHtml: (place, selectedId) => `<div class="map-pin ${place.id === selectedId ? 'map-pin-selected' : ''}" style="--pin-color:${color(place.effectivePinColorHex || place.pinColorHex)}"><img src="assets/pinhead/${iconFiles[place.effectiveIconKey || place.iconKey] || iconFiles.poi}.svg" alt=""></div>`,
@@ -399,6 +398,7 @@ export function download(filename, content, mime) {
     const link = document.createElement('a'); link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function dispose(clearUpdateHook = true) {
+    if (decorationFrame) cancelAnimationFrame(decorationFrame); if (rulerFrame) cancelAnimationFrame(rulerFrame); decorationFrame = rulerFrame = 0;
     terrainRequest++; terrainView?.dispose(); terrainView = null; lastRender = null;
     showEumetnetAlerts = false; cachedAlertAreas = []; alertLanguage = null;
     if (clearUpdateHook) delete globalThis.openHikeMapSaveForUpdate;

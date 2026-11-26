@@ -1,5 +1,4 @@
 const webcamSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-webcam preview-icon" aria-hidden="true"><circle cx="12" cy="10" r="8"/><circle cx="12" cy="10" r="3"/><path d="M7 22h10"/><path d="M12 22v-4"/></svg>';
-
 // A separate layer: catalogue cameras never become saved places or route points.
 export class WebcamOverlay {
     constructor(map, visibleBounds, graphics = null) {
@@ -15,7 +14,7 @@ export class WebcamOverlay {
         this.labels = labels;
         const changed = this.enabled !== enabled; this.enabled = enabled;
         if (!enabled) {
-            this.cancel(); this.layer.remove(); this.layer.clearLayers(); this.markers.clear(); this.showStatus();
+            this.cancel(); this.layer.remove(); this.layer.clearLayers(); this.markers.clear(); this.lastBounds = ''; this.showStatus();
             if (this.attribution) { this.map.attributionControl?.removeAttribution('Webcams: <a href="https://opencam.live/" target="_blank" rel="noopener">OpenCam</a>'); this.attribution = false; }
             return;
         }
@@ -48,6 +47,8 @@ export class WebcamOverlay {
     async load() {
         if (!this.enabled) return;
         const sequence = this.sequence, bounds = this.bounds(); if (!bounds.length) return;
+        const key = bounds.map(box => box.map(value => value.toFixed(5)).join(',')).join(';');
+        if (key === this.lastBounds && Date.now() < this.cacheUntil) { this.showStatus(this.cachedStatus); return; }
         const request = new AbortController(); this.request = request; this.showStatus('loading');
         try {
             const results = await Promise.all(bounds.map(async box => {
@@ -63,7 +64,7 @@ export class WebcamOverlay {
                 const signature = JSON.stringify(camera), previous = this.markers.get(id);
                 if (previous?._webcamSignature === signature) continue;
                 if (previous) this.layer.removeLayer(previous);
-                const icon = L.divIcon({ html: `<div class="map-pin webcam-pin" style="--pin-color:#fff">${webcamSvg}</div>`, className: 'openhikemap-marker', iconSize: [40, 52], iconAnchor: [20, 50] });
+                const icon = this.graphics ? null : L.divIcon({ html: `<div class="map-pin webcam-pin" style="--pin-color:#fff">${webcamSvg}</div>`, className: 'openhikemap-marker', iconSize: [40, 52], iconAnchor: [20, 50] });
                 const title = document.createElement('span'); title.textContent = camera.name;
                 const marker = this.graphics ? this.graphics.marker(camera, webcamSvg).addTo(this.layer) : L.marker([camera.latitude, camera.longitude], { icon, pane: 'webcams', riseOnHover: true, bubblingMouseEvents: false, title: camera.name, alt: camera.name })
                     .bindTooltip(title, { direction: 'top', offset: [0, -39] }).on('click', event => {
@@ -72,7 +73,8 @@ export class WebcamOverlay {
                     }).addTo(this.layer);
                 marker._webcamSignature = signature; this.markers.set(id, marker);
             }
-            this.showStatus(results.some(result => result.truncated) ? 'zoomIn' : cameras.size ? '' : 'empty');
+            this.lastBounds = key; this.cacheUntil = Date.now() + 10 * 60 * 1000;
+            this.cachedStatus = results.some(result => result.truncated) ? 'zoomIn' : cameras.size ? '' : 'empty'; this.showStatus(this.cachedStatus);
         } catch (error) { if (!request.signal.aborted && this.enabled && sequence === this.sequence) this.showStatus('unavailable'); }
         finally { if (this.request === request) this.request = null; }
     }

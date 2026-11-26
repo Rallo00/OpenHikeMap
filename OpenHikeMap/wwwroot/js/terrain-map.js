@@ -1,6 +1,5 @@
 import { ReferenceGrid } from './reference-grid.js';
 import { WebcamOverlay } from './webcams.js';
-
 const empty = () => ({ type: 'FeatureCollection', features: [] });
 const feature = (geometry, properties = {}) => ({ type: 'Feature', geometry, properties });
 const osm = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
@@ -15,7 +14,6 @@ const sources = {
     trails: ['https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', 18, `${osm} | Waymarked Trails`],
     contours: ['https://tile.osm.ch/contours/{z}/{x}/{y}.png', 18, 'Contours © <a href="https://www.osm.ch/">OSM Switzerland</a>']
 };
-
 // Load the renderer and its worker only on entry into 3D; the 2D startup has no WebGL dependency.
 export async function createTerrainMap(container, camera, callbacks, visibleBounds, labels) {
     if (!document.querySelector('link[data-maplibre]')) {
@@ -27,11 +25,10 @@ export async function createTerrainMap(container, camera, callbacks, visibleBoun
     const view = new TerrainMap(gl, container, camera, callbacks, visibleBounds, labels);
     try { await view.ready; return view; } catch (error) { view.dispose(); throw error; }
 }
-
 class TerrainMap {
     constructor(gl, container, camera, callbacks, visibleBounds, labels) {
         this.gl = gl; this.container = container; this.callbacks = callbacks; this.visibleBounds = visibleBounds;
-        this.pins = new Map(); this.labels = labels; this.panels = new Map(); this.path = [];
+        this.pins = new Map(); this.labels = labels; this.panels = new Map(); this.path = []; this.paintSignatures = new Map();
         this.map = new gl.Map({ container, center: [camera.lng, camera.lat], zoom: camera.zoom, pitch: 70, maxPitch: 85, maxZoom: 19,
             attributionControl: false, maxTileCacheSize: 160, style: { version: 8,
                 sources: { terrain: { type: 'raster-dem', url: 'https://tiles.mapterhorn.com/tilejson.json' },
@@ -51,7 +48,7 @@ class TerrainMap {
         });
         this.map.on('contextmenu', e => { e.preventDefault(); callbacks.context(e.lngLat); });
         this.map.on('mousemove', e => callbacks.mousemove(e.lngLat));
-        this.map.on('move', () => { this.updateScale(); callbacks.move(); });
+        this.map.on('move', callbacks.move);
         this.map.on('error', e => { if (e.sourceId === 'terrain') this.setNotice(this.labels.dataUnavailable); });
         this.map.on('webglcontextlost', () => this.setNotice(this.labels.unavailable));
         this.map.on('terrain', () => this.updateControlLabels());
@@ -86,20 +83,28 @@ class TerrainMap {
             if (map.getLayer('base')) map.removeLayer('base'); if (map.getSource('base')) map.removeSource('base');
             map.addSource('base', this.raster(settings.mapStyle)); map.addLayer({ id: 'base', type: 'raster', source: 'base' }, 'hillshade'); this.baseName = settings.mapStyle;
         }
+        let orderChanged = false;
         for (const [id, enabled] of [['satellite', settings.showSatelliteOverlay], ['trails', settings.showHikingTrails], ['contours', settings.showContourLines]]) {
-            if (enabled && !map.getSource(id)) { map.addSource(id, this.raster(id)); map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': id === 'contours' ? .75 : 1 } }); }
-            if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', enabled ? 'visible' : 'none');
+            if (enabled && !map.getSource(id)) { map.addSource(id, this.raster(id)); map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': id === 'contours' ? .75 : 1 } }); orderChanged = true; }
+            const visibility = enabled ? 'visible' : 'none';
+            if (map.getLayer(id) && (map.getLayoutProperty(id, 'visibility') || 'visible') !== visibility) map.setLayoutProperty(id, 'visibility', visibility);
         }
         // Keep route and warnings above every raster overlay, including newly enabled ones.
-        if (path) this.path = path;
-        this.setGeoJSON('route', this.path.length > 1 ? feature({ type: 'LineString', coordinates: this.path.map(p => [p.longitude, p.latitude]) }) : empty(),
-            { type: 'line', paint: { 'line-color': '#c36837', 'line-width': 4, 'line-dasharray': draft ? [2, 2] : [1, 0] }, layout: { 'line-join': 'round', 'line-cap': 'round' } });
-        const warningFeatures = settings.showEumetnetAlerts ? (alerts || []).map((area, index) => ({ area, index })).filter(({area}) => !area.expires || Date.parse(area.expires) > Date.now()).map(({area, index}) => feature({ type: 'MultiPolygon', coordinates: area.polygons.map(polygon => polygon.map(ring => {
-            const points = ring.map(p => [p.longitude, p.latitude]); if (points.length && (points[0][0] !== points.at(-1)[0] || points[0][1] !== points.at(-1)[1])) points.push(points[0]); return points;
-        })) }, { index, color: area.severity >= 4 ? '#C62828' : area.severity >= 3 ? '#EF6C00' : '#C49A00' })) : [];
-        this.setGeoJSON('warnings', { type: 'FeatureCollection', features: warningFeatures }, { type: 'fill', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': .12 } });
-        if (!map.getLayer('warning-lines')) map.addLayer({ id: 'warning-lines', type: 'line', source: 'warnings', paint: { 'line-color': ['get', 'color'], 'line-width': 2 } });
-        for (const id of ['warnings', 'warning-lines', 'route', 'ruler']) if (map.getLayer(id)) map.moveLayer(id);
+        if (path !== this.path || draft !== this.draft || !map.getSource('route')) {
+            this.path = path || this.path; this.draft = draft;
+            orderChanged = this.setGeoJSON('route', this.path.length > 1 ? feature({ type: 'LineString', coordinates: this.path.map(p => [p.longitude, p.latitude]) }) : empty(),
+                { type: 'line', paint: { 'line-color': '#c36837', 'line-width': 4, 'line-dasharray': draft ? [2, 2] : [1, 0] }, layout: { 'line-join': 'round', 'line-cap': 'round' } }) || orderChanged;
+        }
+        if (alerts !== this.alerts || Boolean(settings.showEumetnetAlerts) !== this.alertsEnabled || Date.now() >= this.nextAlertExpiry || !map.getSource('warnings')) {
+            this.alerts = alerts; this.alertsEnabled = Boolean(settings.showEumetnetAlerts); this.nextAlertExpiry = Infinity;
+            const warningFeatures = settings.showEumetnetAlerts ? (alerts || []).map((area, index) => ({ area, index })).filter(({area}) => !area.expires || Date.parse(area.expires) > Date.now()).map(({area, index}) => feature({ type: 'MultiPolygon', coordinates: area.polygons.map(polygon => polygon.map(ring => {
+                const points = ring.map(p => [p.longitude, p.latitude]); if (points.length && (points[0][0] !== points.at(-1)[0] || points[0][1] !== points.at(-1)[1])) points.push(points[0]); return points;
+            })) }, { index, color: area.severity >= 4 ? '#C62828' : area.severity >= 3 ? '#EF6C00' : '#C49A00' })) : [];
+            if (this.alertsEnabled) for (const area of alerts || []) { const expires = Date.parse(area.expires); if (expires > Date.now()) this.nextAlertExpiry = Math.min(this.nextAlertExpiry, expires); }
+            orderChanged = this.setGeoJSON('warnings', { type: 'FeatureCollection', features: warningFeatures }, { type: 'fill', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': .12 } }) || orderChanged;
+        }
+        if (!map.getLayer('warning-lines')) { map.addLayer({ id: 'warning-lines', type: 'line', source: 'warnings', paint: { 'line-color': ['get', 'color'], 'line-width': 2 } }); orderChanged = true; }
+        if (orderChanged) for (const id of ['warnings', 'warning-lines', 'route', 'ruler']) if (map.getLayer(id)) map.moveLayer(id);
         const wanted = new Map();
         if (settings.showSavedPoints) for (const place of places) wanted.set(`pin:${place.id}`, { point: place, html: this.callbacks.placeHtml(place, selectedId), title: place.name,
             click: point => this.callbacks.place(place, point), context: point => this.callbacks.place(place, point) });
@@ -121,9 +126,11 @@ class TerrainMap {
         this.updateScale(); this.resize();
     }
     setGeoJSON(id, data, layer) {
-        if (this.map.getSource(id)) this.map.getSource(id).setData(data);
-        else { this.map.addSource(id, { type: 'geojson', data }); this.map.addLayer({ id, source: id, ...layer }); }
-        if (layer.paint) for (const [key, value] of Object.entries(layer.paint)) this.map.setPaintProperty(id, key, value);
+        const signature = JSON.stringify(layer.paint);
+        if (!this.map.getSource(id)) { this.map.addSource(id, { type: 'geojson', data }); this.map.addLayer({ id, source: id, ...layer }); this.paintSignatures.set(id, signature); return true; }
+        this.map.getSource(id).setData(data);
+        if (this.paintSignatures.get(id) !== signature) { for (const [key, value] of Object.entries(layer.paint || {})) this.map.setPaintProperty(id, key, value); this.paintSignatures.set(id, signature); }
+        return false;
     }
     makeMarker(options, add = true) {
         const element = document.createElement('div'); element.className = `terrain-marker${options.badge ? ' terrain-stop' : ''}`; element.title = options.title || '';
@@ -156,9 +163,10 @@ class TerrainMap {
     setMode(mode) { this.mode = mode; this.map.getCanvas().style.cursor = mode === 'explore' ? '' : 'crosshair'; this.setRuler(); }
     setRuler(points = [], text = '') {
         this.setGeoJSON('ruler', points.length > 1 ? feature({ type: 'LineString', coordinates: points.map(p => [p.lng, p.lat]) }) : empty(), { type: 'line', paint: { 'line-color': '#1f6feb', 'line-width': 3, 'line-dasharray': [2, 2] } });
-        this.rulerLabel?.remove(); this.rulerLabel = null;
-        if (text && points.length > 1) { const node = document.createElement('span'); node.className = 'ruler-label terrain-ruler'; node.textContent = text;
-            this.rulerLabel = new this.gl.Marker({ element: node, anchor: 'bottom' }).setLngLat([(points[0].lng + points[1].lng) / 2, (points[0].lat + points[1].lat) / 2]).addTo(this.map); }
+        if (!text || points.length < 2) { this.rulerLabel?.remove(); this.rulerLabel = null; return; }
+        if (!this.rulerLabel) { const node = document.createElement('span'); node.className = 'ruler-label terrain-ruler'; this.rulerLabel = new this.gl.Marker({ element: node, anchor: 'bottom' }).setLngLat([points[0].lng, points[0].lat]).addTo(this.map); }
+        this.rulerLabel.getElement().textContent = text;
+        this.rulerLabel.setLngLat([(points[0].lng + points[1].lng) / 2, (points[0].lat + points[1].lat) / 2]);
     }
     updateScale() {
         if (!this.state) return; const visible = this.visibleBounds();

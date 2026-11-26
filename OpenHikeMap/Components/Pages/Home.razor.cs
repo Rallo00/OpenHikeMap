@@ -5,9 +5,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 using OpenHikeMap.Models;
 using OpenHikeMap.Services;
-
 namespace OpenHikeMap.Components.Pages;
-
 public partial class Home
 {
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
@@ -143,15 +141,15 @@ public partial class Home
         catch (JSDisconnectedException) { }
         catch (Exception ex) { StartupDiagnostics.Write("Background startup update failed.", ex); }
     }
-    private async Task Run(Func<Task> action)
+    private async Task Run(Func<Task> action, bool exclusive = true)
     {
-        if (Busy) return;
-        Busy = true;
+        if (exclusive && Busy) return;
+        if (exclusive) Busy = true;
         try { await action(); }
         catch (OperationCanceledException) { if (!Lifetime.IsCancellationRequested) Status = "Il servizio non ha risposto in tempo. Riprova."; }
         catch (InvalidDataException ex) { Status = ex.Message; }
         catch (Exception) { Status = "Operazione non riuscita. Controlla il file o la connessione e riprova."; }
-        finally { Busy = false; }
+        finally { if (exclusive) Busy = false; }
     }
     private async Task Save()
     {
@@ -187,7 +185,7 @@ public partial class Home
         var appearance = Appearances.Resolve(place);
         return new { place.Id, place.Name, place.Description, place.Latitude, place.Longitude, place.IconKey, place.PinColorHex, effectiveIconKey = appearance.IconKey, effectivePinColorHex = appearance.PinColorHex };
     }
-    private async Task Refresh() => await Run(async () => { await Save(); await RenderMap(); });
+    private async Task Refresh() => await Run(async () => { await RenderMap(); await Save(); }, exclusive: false);
     private string FolderPath(SavedFolder folder)
     {
         var names = new List<string> { folder.Name }; var parent = folder.ParentId; var seen = new HashSet<Guid> { folder.Id };
