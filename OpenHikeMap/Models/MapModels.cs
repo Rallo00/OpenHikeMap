@@ -476,6 +476,7 @@ public sealed partial class LocalizationService : BindableBase
         ApplyMapGridTranslations();
         ApplyUpdateTranslations();
         ApplyWebcamTranslations();
+        ApplyTerrainTranslations();
         ApplySettingsTranslations();
         ApplyEumetnetTranslations();
     }

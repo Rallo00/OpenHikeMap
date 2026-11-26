@@ -6,6 +6,7 @@ let mode = 'explore', rulerStart, ruler, popup, weatherMarker, unitPreset = 'Met
 let leafletLoader, searchEvents, renderedStops = '';
 let placesById = new Map(), markersByPlaceId = new Map();
 let webcams;
+let terrainView, lastRender, terrainRequest = 0;
 let contextLabels = { addPin: 'Aggiungi pin', deletePin: 'Elimina', edit: 'Modifica elemento', save: 'Salva modifiche', cancel: 'Annulla', start: 'Imposta come punto di partenza', waypoint: 'Imposta come waypoint', end: 'Imposta come punto di arrivo', weather: 'Imposta come punto di calcolo meteo', directWaypoint: 'Imposta come waypoint diretto', deleteRoutePoint: 'Elimina punto traccia', name: 'Nome', description: 'Descrizione', icon: 'Icona', color: 'Colore pin' };
 const storageKey = 'openhikemap.web.session.v1';
 const routeStorageKey = 'openhikemap.web.route.v1';
@@ -108,7 +109,7 @@ export async function initialize(id, dotnet, settings) {
     map.on('contextmenu', event => openMapContext(event.latlng));
     map.on('move zoom', () => { drawBearing(); updateModernScale(); });
     map.on('mousemove', event => { if (mode === 'ruler' && rulerStart) renderRuler(event.latlng); });
-    resizeObserver = new ResizeObserver(() => { map?.invalidateSize(); drawBearing(); updateModernScale(); referenceGrid?.schedule(); webcams?.schedule(); });
+    resizeObserver = new ResizeObserver(() => { map?.invalidateSize(); terrainView?.resize(); drawBearing(); updateModernScale(); referenceGrid?.schedule(); webcams?.schedule(); });
     resizeObserver.observe(container);
     const library = document.querySelector('.library'); if (library) resizeObserver.observe(library);
     const profile = document.querySelector('.elevation-panel'); if (profile) resizeObserver.observe(profile);
@@ -123,7 +124,12 @@ function contextIconButton(label, icon, click) {
 }
 function contextAction(menu, label, action, latlng, name, routeIndex) {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'context-action'; button.textContent = label;
-    button.onclick = () => { map.closePopup(); call('MapAction', latlng.lat, latlng.lng, action, name, routeIndex); }; menu.append(button);
+    button.onclick = () => { closeMapPopup(); call('MapAction', latlng.lat, latlng.lng, action, name, routeIndex); }; menu.append(button);
+}
+function closeMapPopup() { map?.closePopup(); terrainView?.closePopup(); }
+function showMapPopup(latlng, content, autoPan = false) {
+    if (terrainView) terrainView.showPopup(latlng, content);
+    else popup = L.popup({ closeButton: false, autoPan, className: 'openhikemap-context' }).setLatLng(latlng).setContent(content).openOn(map);
 }
 function openPlaceEditor(latlng, place) {
     const menu = document.createElement('form'); menu.className = 'map-context-menu place-editor-popup';
@@ -139,18 +145,18 @@ function openPlaceEditor(latlng, place) {
     if (place.pinColorHex && !Array.from(pinColor.options).some(option => option.value.toLowerCase() === place.pinColorHex.toLowerCase())) pinColor.add(new Option(contextLabels.currentColor, place.pinColorHex));
     pinColor.value = Array.from(pinColor.options).find(option => option.value.toLowerCase() === (place.pinColorHex || '').toLowerCase())?.value || '';
     const actions = document.createElement('div'); actions.className = 'context-editor-actions';
-    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = contextLabels.cancel; cancel.onclick = () => map.closePopup(); actions.append(cancel);
+    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = contextLabels.cancel; cancel.onclick = () => closeMapPopup(); actions.append(cancel);
     const save = document.createElement('button'); save.type = 'submit'; save.className = 'primary'; save.textContent = contextLabels.save; actions.append(save); menu.append(actions);
-    menu.onsubmit = event => { event.preventDefault(); map.closePopup(); call('EditPlace', place.id, name.value, description.value, icon.value, pinColor.value); };
-    popup = L.popup({ closeButton: false, autoPan: true, className: 'openhikemap-context' }).setLatLng(latlng).setContent(menu).openOn(map);
+    menu.onsubmit = event => { event.preventDefault(); closeMapPopup(); call('EditPlace', place.id, name.value, description.value, icon.value, pinColor.value); };
+    showMapPopup(latlng, menu, true);
 }
 function openMapContext(latlng, name = '', routeIndex = -1, place = null) {
     const menu = document.createElement('div'); menu.className = 'map-context-menu';
     const heading = document.createElement('div'); heading.className = 'context-menu-heading';
     if (place) {
-        heading.append(contextIconButton(contextLabels.deletePin, deleteIcon, () => { map.closePopup(); call('DeletePlaceFromMap', place.id); }));
+        heading.append(contextIconButton(contextLabels.deletePin, deleteIcon, () => { closeMapPopup(); call('DeletePlaceFromMap', place.id); }));
         heading.append(contextIconButton(contextLabels.edit, editIcon, () => openPlaceEditor(latlng, place)));
-    } else heading.append(contextIconButton(contextLabels.addPin, pinAddIcon, () => { map.closePopup(); call('MapAction', latlng.lat, latlng.lng, 'pin', name, routeIndex); }));
+    } else heading.append(contextIconButton(contextLabels.addPin, pinAddIcon, () => { closeMapPopup(); call('MapAction', latlng.lat, latlng.lng, 'pin', name, routeIndex); }));
     menu.append(heading);
     contextAction(menu, contextLabels.start, 'start', latlng, name, routeIndex);
     contextAction(menu, contextLabels.waypoint, 'waypoint', latlng, name, routeIndex);
@@ -159,23 +165,26 @@ function openMapContext(latlng, name = '', routeIndex = -1, place = null) {
     contextAction(menu, contextLabels.weather, 'weather', latlng, name, routeIndex);
     contextAction(menu, contextLabels.directWaypoint, 'directWaypoint', latlng, name, routeIndex);
     if (routeIndex >= 0) { const routeSeparator = document.createElement('hr'); menu.append(routeSeparator); contextAction(menu, contextLabels.deleteRoutePoint, 'deleteRoutePoint', latlng, name, routeIndex); }
-    popup = L.popup({ closeButton: false, autoPan: false, className: 'openhikemap-context' }).setLatLng(latlng).setContent(menu).openOn(map);
+    showMapPopup(latlng, menu);
 }
 export function setMode(value) {
     if (!map) return;
     mode = value; rulerStart = null;
+    terrainView?.setMode(value);
     if (ruler) { map.removeLayer(ruler); ruler = null; }
     map.getContainer().style.cursor = value === 'explore' ? '' : 'crosshair';
 }
 export function render(settings, places, stops, path, draft, selectedId, labels, alertAreas = null, weatherPoint = null) {
     if (!map || !layers) return;
+    lastRender = { settings, places, stops, path: path ?? lastRender?.path ?? [], draft, selectedId, labels, alerts: alertAreas ?? lastRender?.alerts ?? [], weatherPoint };
     contextLabels = { ...contextLabels, ...labels };
     renderWeatherPoint(weatherPoint);
     const next = layers[settings.mapStyle] || layers.OpenStreetMap;
-    if (base !== next) { if (base) map.removeLayer(base); base = next; base.addTo(map); }
+    if (base !== next) { if (base) map.removeLayer(base); base = next; }
+    if (!terrainView && !map.hasLayer(base)) base.addTo(map);
     for (const [name, enabled] of [['satellite', settings.showSatelliteOverlay], ['trails', settings.showHikingTrails], ['contours', settings.showContourLines]]) {
-        if (enabled && !map.hasLayer(layers[name])) layers[name].addTo(map);
-        if (!enabled && map.hasLayer(layers[name])) map.removeLayer(layers[name]);
+        if (enabled && !terrainView && !map.hasLayer(layers[name])) layers[name].addTo(map);
+        if ((!enabled || terrainView) && map.hasLayer(layers[name])) map.removeLayer(layers[name]);
     }
     const nextPlaces = new Map(places.map(place => [place.id, place]));
     for (const [id, marker] of markersByPlaceId) if (!nextPlaces.has(id)) { markers.removeLayer(marker); markersByPlaceId.delete(id); }
@@ -210,12 +219,12 @@ export function render(settings, places, stops, path, draft, selectedId, labels,
         else routeLine = L.polyline(points, style).addTo(map);
     }
     unitPreset = settings.unitPreset || 'Metric';
-    if (settings.showWebcams || webcams) { webcams ??= new WebcamOverlay(map, visibleMapBounds); webcams.setOptions(Boolean(settings.showWebcams), labels.webcams); }
+    if (settings.showWebcams || webcams) { webcams ??= new WebcamOverlay(map, visibleMapBounds); webcams.setOptions(Boolean(settings.showWebcams) && !terrainView, labels.webcams); }
     setModernScale(Boolean(settings.showMapScale));
-    if (settings.showCoordinateGrid) { referenceGrid ??= new ReferenceGrid(map, visibleMapBounds); referenceGrid.setOptions({ cardinals: labels.gridCardinals, locale: settings.languageCode, stepLabel: labels.gridStep, zoomIn: labels.gridZoomIn, unavailable: labels.gridUnavailable }); }
+    if (settings.showCoordinateGrid && !terrainView) { referenceGrid ??= new ReferenceGrid(map, visibleMapBounds); referenceGrid.setOptions({ cardinals: labels.gridCardinals, locale: settings.languageCode, stepLabel: labels.gridStep, zoomIn: labels.gridZoomIn, unavailable: labels.gridUnavailable }); }
     else { referenceGrid?.dispose(); referenceGrid = null; }
     if (!settings.showBearingCircle) { bearing?.remove(); bearing = null; }
-    else if (!bearing) { bearing = document.createElement('div'); bearing.className = 'bearing-overlay'; bearing.setAttribute('aria-hidden', 'true'); map.getContainer().append(bearing); }
+    else if (!bearing) { bearing = document.createElement('div'); bearing.className = 'bearing-overlay'; bearing.setAttribute('aria-hidden', 'true'); (terrainView?.container || map.getContainer()).append(bearing); }
     drawBearing();
     const alertsChanged = Array.isArray(alertAreas);
     if (alertsChanged) cachedAlertAreas = alertAreas;
@@ -240,6 +249,7 @@ export function render(settings, places, stops, path, draft, selectedId, labels,
         }).bindTooltip(`${area.name}: ${area.event}`).bindPopup(content, { className: 'openhikemap-context', maxWidth: 380 }).addTo(eumetnetAlerts);
     }
     }
+    terrainView?.render(lastRender);
 }
 function renderWeatherPoint(point) {
     if (!point) {
@@ -269,7 +279,7 @@ function drawBearing() {
     const {left, right, height} = visibleMapBounds(), cx = (left + right) / 2, cy = height / 2, radius = Math.max(45, Math.min(right - left, height) * .34);
     let svg = `<circle cx="${cx}" cy="${cy}" r="${radius}"/>`;
     for (let degrees = 0; degrees < 360; degrees += 15) {
-        const angle = (degrees - 90) * Math.PI / 180, major = degrees % 30 === 0, inner = radius - (major ? 14 : 8);
+        const angle = (degrees - 90 - (terrainView?.map.getBearing() || 0)) * Math.PI / 180, major = degrees % 30 === 0, inner = radius - (major ? 14 : 8);
         svg += `<path d="M${cx + Math.cos(angle) * inner} ${cy + Math.sin(angle) * inner}L${cx + Math.cos(angle) * radius} ${cy + Math.sin(angle) * radius}"/>`;
         if (major) {
             const label = degrees % 90 === 0 ? (contextLabels.cardinals || ['N','E','S','W'])[degrees / 90] : `${degrees}°`;
@@ -319,6 +329,7 @@ function renderRuler(point) {
     if (ruler) map.removeLayer(ruler);
     ruler = globalThis.L.polyline([rulerStart, point], { color: '#1f6feb', weight: 3, dashArray: '7 6' }).addTo(map);
     ruler.bindTooltip(`${formatRulerDistance(map.distance(rulerStart, point))} | ${Math.round(azimuth(rulerStart, point))}°`, { permanent: true, direction: 'top', className: 'ruler-label' }).openTooltip();
+    terrainView?.setRuler([rulerStart, point], `${formatRulerDistance(map.distance(rulerStart, point))} | ${Math.round(azimuth(rulerStart, point))}°`);
 }
 function measure(point) {
     if (!rulerStart) {
@@ -330,19 +341,65 @@ function measure(point) {
         rulerStart = null;
     }
 }
-export function center(lat, lon, zoom) { if (map) { map.stop(); map.flyTo([lat, lon], zoom, { duration: 3 }); } }
+export async function set3D(enabled) {
+    if (!map || !lastRender) return false;
+    const request = ++terrainRequest;
+    closeMapPopup(); rulerStart = null; if (ruler) { map.removeLayer(ruler); ruler = null; }
+    if (!enabled) {
+        if (!terrainView) return false;
+        const position = terrainView.map.getCenter(), zoom = terrainView.map.getZoom() + 1;
+        if (bearing) map.getContainer().append(bearing);
+        terrainView.dispose(); terrainView = null; map.getContainer().style.visibility = '';
+        map.invalidateSize(); map.setView([position.lat, position.lng], Math.min(19, zoom), { animate: false });
+        const state = lastRender; render(state.settings, state.places, state.stops, state.path, state.draft, state.selectedId, state.labels, null, state.weatherPoint);
+        return false;
+    }
+    if (terrainView) return true;
+    map.stop(); const center = map.getCenter();
+    const container = document.createElement('div'); container.className = 'terrain-map'; container.setAttribute('aria-label', lastRender.labels.terrain.title); map.getContainer().parentElement.append(container);
+    try {
+        const { createTerrainMap } = await import('./terrain-map.js');
+        const view = await createTerrainMap(container, { lat: center.lat, lng: center.lng, zoom: Math.max(0, map.getZoom() - 1), style: lastRender.settings.mapStyle }, {
+            click: point => { if (mode === 'ruler') measure(point); else if (mode !== 'explore') call('MapClick', point.lat, point.lng, mode); },
+            context: point => openMapContext(point), mousemove: point => { if (mode === 'ruler' && rulerStart) renderRuler(point); }, move: () => drawBearing(),
+            place: (place, point) => { call('PinSelected', place.id); openMapContext(point, place.name, -1, place); },
+            stop: (stop, index, point) => openMapContext(point, stop.name, index), weather: point => call('MapAction', point.lat, point.lng, 'weather', '', -1),
+            placeHtml: (place, selectedId) => `<div class="map-pin ${place.id === selectedId ? 'map-pin-selected' : ''}" style="--pin-color:${color(place.effectivePinColorHex || place.pinColorHex)}"><img src="assets/pinhead/${iconFiles[place.effectiveIconKey || place.iconKey] || iconFiles.poi}.svg" alt=""></div>`,
+            weatherHtml: '<div class="map-pin weather-reference"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2m-7.07.93 1.41 1.41M20 12h2m-2.93-7.07-1.41 1.41M15.947 12.65a4 4 0 0 0-5.925-4.128M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/></svg></div>',
+            scaleLabel: meters => formatScaleDistance(meters),
+            alert: (area, point) => { if (!area) return; const content = document.createElement('article'); content.className = 'eumetnet-alert-popup';
+                const heading = document.createElement('strong'); heading.textContent = area.name; const details = document.createElement('p'); details.textContent = `${area.event}\n${area.details}\n${area.sender}`;
+                const source = document.createElement('a'); source.href = 'https://meteoalarm.org/'; source.target = '_blank'; source.rel = 'noopener'; source.textContent = 'EUMETNET – Meteoalarm'; content.append(heading, details, source); showMapPopup(point, content); }
+        }, visibleMapBounds, lastRender.labels.terrain);
+        if (request !== terrainRequest || !map) { view.dispose(); return false; }
+        terrainView = view;
+        map.getContainer().style.visibility = 'hidden'; if (bearing) container.append(bearing);
+        referenceGrid?.dispose(); referenceGrid = null; webcams?.setOptions(false, lastRender.labels.webcams);
+        for (const layer of new Set(Object.values(layers))) if (map.hasLayer(layer)) map.removeLayer(layer);
+        view.setMode(mode); const state = lastRender;
+        render(state.settings, state.places, state.stops, state.path, state.draft, state.selectedId, state.labels, null, state.weatherPoint);
+        return true;
+    } catch (error) {
+        if (bearing && map) map.getContainer().append(bearing);
+        container.remove(); if (terrainView?.container === container) { terrainView.dispose(); terrainView = null; }
+        if (map) { map.getContainer().style.visibility = ''; const state = lastRender; if (state) render(state.settings, state.places, state.stops, state.path, state.draft, state.selectedId, state.labels, null, state.weatherPoint); }
+        throw error;
+    }
+}
+export function center(lat, lon, zoom) { if (terrainView) terrainView.center(lat, lon, zoom); else if (map) { map.stop(); map.flyTo([lat, lon], zoom, { duration: 3 }); } }
 export function openPlaceContext(id) {
     const place = placesById.get(id), marker = markersByPlaceId.get(id);
     if (!map || !place || !marker) return;
-    const latlng = marker.getLatLng(); map.panTo(latlng); openMapContext(latlng, place.name || 'Punto salvato', -1, place);
+    const latlng = marker.getLatLng(); if (terrainView) terrainView.center(latlng.lat, latlng.lng, terrainView.map.getZoom() + 1); else map.panTo(latlng); openMapContext(latlng, place.name || 'Punto salvato', -1, place);
 }
-export function getCenter() { const center = map?.getCenter(); return center ? [center.lat, center.lng] : [0, 0]; }
-export function fit(path) { if (map && path.length) { const bounds = visibleMapBounds(); map.fitBounds(L.latLngBounds(path.map(p => [p.latitude, p.longitude])), { paddingTopLeft: [bounds.left + 25, 25], paddingBottomRight: [map.getSize().x - bounds.right + 25, bounds.bottom + 25], maxZoom: 15 }); } }
+export function getCenter() { const center = terrainView?.map.getCenter() || map?.getCenter(); return center ? [center.lat, center.lng] : [0, 0]; }
+export function fit(path) { if (terrainView) terrainView.fit(path); else if (map && path.length) { const bounds = visibleMapBounds(); map.fitBounds(L.latLngBounds(path.map(p => [p.latitude, p.longitude])), { paddingTopLeft: [bounds.left + 25, 25], paddingBottomRight: [map.getSize().x - bounds.right + 25, bounds.bottom + 25], maxZoom: 15 }); } }
 export function download(filename, content, mime) {
     const url = URL.createObjectURL(new Blob([content], { type: typeof content === 'string' ? mime + ';charset=utf-8' : mime }));
     const link = document.createElement('a'); link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function dispose(clearUpdateHook = true) {
+    terrainRequest++; terrainView?.dispose(); terrainView = null; lastRender = null;
     showEumetnetAlerts = false; cachedAlertAreas = []; alertLanguage = null;
     if (clearUpdateHook) delete globalThis.openHikeMapSaveForUpdate;
     renderedStops = ''; placesById.clear(); markersByPlaceId.clear();

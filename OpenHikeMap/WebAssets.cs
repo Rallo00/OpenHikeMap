@@ -17,7 +17,7 @@ internal static class WebAssets
         fingerprint.AppendData(frameworkBytes.GetBuffer().AsSpan(0, (int)frameworkBytes.Length));
         var hash = Convert.ToHexString(fingerprint.GetHashAndReset())[..24];
         var directory = Path.Combine(DesktopApplication.DataDirectory, "Application", hash);
-        string[] required = ["_framework/blazor.web.js", "app.css", "css/map-overrides.css", "js/map.js", "js/reference-grid.js", "js/utm-grid.js", "lib/proj4/proj4.js", "js/elevation-profile.js", "lib/leaflet/leaflet.js", "lib/leaflet/leaflet.css"];
+        string[] required = ["_framework/blazor.web.js", "app.css", "css/map-overrides.css", "js/map.js", "js/terrain-map.js", "lib/maplibre/maplibre-gl.mjs", "lib/maplibre/maplibre-gl-worker.mjs", "lib/maplibre/maplibre-gl.css", "js/reference-grid.js", "js/utm-grid.js", "lib/proj4/proj4.js", "js/elevation-profile.js", "lib/leaflet/leaflet.js", "lib/leaflet/leaflet.css"];
         if (required.All(file => File.Exists(Path.Combine(directory, "wwwroot", file)))) return directory;
         var staging = Directory.Exists(directory) ? directory : directory + ".tmp-" + Guid.NewGuid().ToString("N");
         Directory.CreateDirectory(Path.Combine(staging, "wwwroot")); bytes.Position = 0;

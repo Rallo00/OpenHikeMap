@@ -2,10 +2,10 @@ const webcamSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24
 
 // A separate layer: catalogue cameras never become saved places or route points.
 export class WebcamOverlay {
-    constructor(map, visibleBounds) {
-        this.map = map; this.visibleBounds = visibleBounds; this.enabled = false; this.sequence = 0; this.markers = new Map();
+    constructor(map, visibleBounds, graphics = null) {
+        this.graphics = graphics; this.map = map; this.visibleBounds = visibleBounds; this.enabled = false; this.sequence = 0; this.markers = new Map();
         if (!map.getPane('webcams')) { map.createPane('webcams'); map.getPane('webcams').style.zIndex = 580; }
-        this.layer = L.layerGroup();
+        this.layer = graphics ? graphics.layerGroup() : L.layerGroup();
         this.status = L.DomUtil.create('div', 'webcam-status'); this.status.hidden = true; this.status.setAttribute('role', 'status'); this.status.setAttribute('aria-live', 'polite');
         map.getContainer().append(this.status);
         this.moving = () => this.cancel(); this.moved = () => this.schedule();
@@ -65,7 +65,7 @@ export class WebcamOverlay {
                 if (previous) this.layer.removeLayer(previous);
                 const icon = L.divIcon({ html: `<div class="map-pin webcam-pin" style="--pin-color:#fff">${webcamSvg}</div>`, className: 'openhikemap-marker', iconSize: [40, 52], iconAnchor: [20, 50] });
                 const title = document.createElement('span'); title.textContent = camera.name;
-                const marker = L.marker([camera.latitude, camera.longitude], { icon, pane: 'webcams', riseOnHover: true, bubblingMouseEvents: false, title: camera.name, alt: camera.name })
+                const marker = this.graphics ? this.graphics.marker(camera, webcamSvg).addTo(this.layer) : L.marker([camera.latitude, camera.longitude], { icon, pane: 'webcams', riseOnHover: true, bubblingMouseEvents: false, title: camera.name, alt: camera.name })
                     .bindTooltip(title, { direction: 'top', offset: [0, -39] }).on('click', event => {
                         L.DomEvent.stopPropagation(event);
                         const url = new URL(camera.url); if (url.protocol === 'https:' && url.hostname === 'opencam.live' && url.pathname === '/globe') window.open(url.href, '_blank', 'noopener,noreferrer');
