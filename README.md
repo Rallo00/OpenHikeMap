@@ -22,11 +22,13 @@ I then started to use AI to build a Windows application that suited my needs, an
 - Show on map ruler feature with distance and bearing;
 - Show on map ruler feature with bering/azimuth;
 - Find webcams near your area to check live feed (opencam.live external website);
+- 3D map;
 
 - Route planning;
 - GPS route (GPX) import and export;
 - KML import and export for Google Earth;
 
+<img width="1364" height="745" alt="image" src="https://github.com/user-attachments/assets/7ff08a01-6ce9-4fcc-bd65-964d4a24405f" />
 <img width="1386" height="1014" alt="image" src="https://github.com/user-attachments/assets/cacce7df-a01a-4e11-bdb8-823d4db0d7bc" />
 <img width="639" height="559" alt="image" src="https://github.com/user-attachments/assets/9ed390bb-41d5-4dbf-aec1-25ee2a0c8418" />
 <img width="552" height="466" alt="image" src="https://github.com/user-attachments/assets/cb7be187-0c21-4a01-aacf-9a7b6f927f11" />
